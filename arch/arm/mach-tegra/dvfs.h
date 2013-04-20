@@ -21,7 +21,7 @@
 #ifndef _TEGRA_DVFS_H_
 #define _TEGRA_DVFS_H_
 
-#define MAX_DVFS_FREQS	40
+#define MAX_DVFS_FREQS	50
 #define DVFS_RAIL_STATS_TOP_BIN	42
 
 struct clk;
@@ -83,7 +83,7 @@ struct dvfs {
 	int freqs_mult;
 	unsigned long freqs[MAX_DVFS_FREQS];
 	unsigned long *alt_freqs;
-	const int *millivolts;
+	int *millivolts;
 	struct dvfs_rail *dvfs_rail;
 	bool auto_dvfs;
 

@@ -34,7 +34,7 @@
 #include <linux/debugfs.h>
 #include <linux/cpu.h>
 #include <mach/board-cardhu-misc.h>
-
+#include <mach/hundsbuah.h>
 #include <asm/system.h>
 
 #include <mach/clk.h>
@@ -62,6 +62,7 @@ static struct cpufreq_frequency_table *freq_table;
 static unsigned int freq_table_size=0;;
 static struct clk *cpu_clk;
 static struct clk *emc_clk;
+static unsigned int boot_finished = 0;
 
 static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
@@ -277,7 +278,7 @@ module_param_cb(system_mode, &system_mode_ops, &system_mode, 0644);
 
 
 static unsigned int pwr_save=0;
-static unsigned int pwr_save_freq=1000000;
+static unsigned int pwr_save_freq=HUNDSBUAH_SYSTEM_PWRSAVE_MODE_FREQUENCY;
 static int pwr_save_freq_set(const char *arg, const struct kernel_param *kp)
 {
 	int ret = 0;
@@ -445,7 +446,13 @@ static void edp_update_limit(void)
 	unsigned int limit = edp_predict_limit(cpumask_weight(&edp_cpumask));
 
 #ifdef CONFIG_TEGRA_EDP_EXACT_FREQ
-	edp_limit = limit;
+	if(boot_finished == 0)
+   {
+     pr_info("%s: Limiting edp value from %u to %u during boot!\n", __func__, limit, HUNDSBUAH_CPU_BOOT_FREQUENCY * 1000);
+     edp_limit = (HUNDSBUAH_CPU_BOOT_FREQUENCY * 1000);
+   }
+   else
+     edp_limit = limit;
 #else
 	unsigned int i;
 	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
@@ -674,6 +681,33 @@ module_param_cb(pwr_cap_limit_1, &pwr_cap_ops, &pwr_cap_limits[0], 0644);
 module_param_cb(pwr_cap_limit_2, &pwr_cap_ops, &pwr_cap_limits[1], 0644);
 module_param_cb(pwr_cap_limit_3, &pwr_cap_ops, &pwr_cap_limits[2], 0644);
 module_param_cb(pwr_cap_limit_4, &pwr_cap_ops, &pwr_cap_limits[3], 0644);
+
+static int boot_finished_set(const char *arg, const struct kernel_param *kp)
+{
+   int ret = 0;
+   ret = param_set_uint(arg, kp);
+
+   if(ret)
+	   return ret;
+
+   pr_info("%s: boot_finished value set to 1!\n", __func__);
+   edp_update_limit();
+   ret = tegra_cpu_set_speed_cap(NULL);
+
+   return ret;
+}
+
+static int boot_finished_get(char *buffer, const struct kernel_param *kp)
+{
+   pr_info("%s: boot_finished value: %u\n", __func__, boot_finished);
+   return param_get_uint(buffer, kp);
+}
+
+static struct kernel_param_ops boot_finished_ops = {
+	.set = boot_finished_set,
+	.get = boot_finished_get,
+};
+module_param_cb(boot_finished, &boot_finished_ops, &boot_finished, 0644);
 
 #ifdef CONFIG_DEBUG_FS
 static int pwr_mode_table_debugfs_show(struct seq_file *s, void *data)
@@ -992,9 +1026,9 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 
 void rebuild_max_freq_table(unsigned int max_rate)
 {
-	power_mode_table[SYSTEM_NORMAL_MODE] = max_rate;
-	power_mode_table[SYSTEM_BALANCE_MODE] = max_rate - 200000;
-	power_mode_table[SYSTEM_PWRSAVE_MODE] = SYSTEM_PWRSAVE_MODE_MAX_FREQ;
+	power_mode_table[SYSTEM_NORMAL_MODE]  = (HUNDSBUAH_SYSTEM_NORMAL_MODE_FREQUENCY);
+	power_mode_table[SYSTEM_BALANCE_MODE] = (HUNDSBUAH_SYSTEM_BALANCE_MODE_FREQUENCY);
+	power_mode_table[SYSTEM_PWRSAVE_MODE] = (HUNDSBUAH_SYSTEM_PWRSAVE_MODE_FREQUENCY);
 }
 
 static int tegra_cpu_init(struct cpufreq_policy *policy)
@@ -1021,7 +1055,7 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	target_cpu_speed[policy->cpu] = policy->cur;
 
 	/* FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 300 * 1000;
+	policy->cpuinfo.transition_latency = 70 * 1000;
 
 	policy->shared_type = CPUFREQ_SHARED_TYPE_ALL;
 	cpumask_copy(policy->related_cpus, cpu_possible_mask);
@@ -1089,6 +1123,7 @@ static int __init tegra_cpufreq_init(void)
 	if (IS_ERR_OR_NULL(table_data))
 		return -EINVAL;
 
+   pr_info("%s: boot_finished value: %u\n", __func__, boot_finished);
 	suspend_index = table_data->suspend_index;
 
 	ret = tegra_throttle_init(&tegra_cpu_lock);

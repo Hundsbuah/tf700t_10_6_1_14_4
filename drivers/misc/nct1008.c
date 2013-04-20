@@ -419,7 +419,7 @@ void nct1008_read_stress_test(struct work_struct *work)
 	long ext_temperature=0;
 	nct1008_get_temp(&pnct1008_data->client->dev, &ext_temperature, NULL);
 	printk("cpu ext_temperature=%ld\n", ext_temperature/1000);
-       queue_delayed_work(nct1008_stress_work_queue, &pnct1008_data->stress_test, 5*HZ);
+       queue_delayed_work(nct1008_stress_work_queue, &pnct1008_data->stress_test, 10*HZ);
 	return ;
 }
 long  nct1008_ioctl(struct file *filp,  unsigned int cmd, unsigned long arg)
