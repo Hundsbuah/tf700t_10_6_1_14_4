@@ -4856,6 +4856,90 @@ static struct cpufreq_frequency_table freq_table_300MHz[] = {
 	{ 2, CPUFREQ_TABLE_END },
 };
 
+static struct cpufreq_frequency_table freq_table_1p0GHz[] = {
+	{ 0,  51000 },
+	{ 1, 102000 },
+	{ 2, 204000 },
+	{ 3, 312000 },
+	{ 4, 456000 },
+	{ 5, 608000 },
+	{ 6, 760000 },
+	{ 7, 816000 },
+	{ 8, 912000 },
+	{ 9, 1000000 },
+	{10, CPUFREQ_TABLE_END },
+};
+
+static struct cpufreq_frequency_table freq_table_1p3GHz[] = {
+	{ 0,   51000 },
+	{ 1,  102000 },
+	{ 2,  204000 },
+	{ 3,  340000 },
+	{ 4,  475000 },
+	{ 5,  640000 },
+	{ 6,  760000 },
+	{ 7,  860000 },
+	{ 8, 1000000 },
+	{ 9, 1100000 },
+	{10, 1200000 },
+	{11, 1300000 },
+	{12, CPUFREQ_TABLE_END },
+};
+
+static struct cpufreq_frequency_table freq_table_1p4GHz[] = {
+	{ 0,   51000 },
+	{ 1,  102000 },
+	{ 2,  204000 },
+	{ 3,  370000 },
+	{ 4,  475000 },
+	{ 5,  620000 },
+	{ 6,  760000 },
+	{ 7,  860000 },
+	{ 8, 1000000 },
+	{ 9, 1100000 },
+	{10, 1200000 },
+	{11, 1300000 },
+	{12, 1400000 },
+	{13, CPUFREQ_TABLE_END },
+};
+
+static struct cpufreq_frequency_table freq_table_1p5GHz[] = {
+	{ 0,   51000 },
+	{ 1,  102000 },
+	{ 2,  204000 },
+	{ 3,  340000 },
+	{ 4,  475000 },
+	{ 5,  640000 },
+	{ 6,  760000 },
+	{ 7,  860000 },
+	{ 8, 1000000 },
+	{ 9, 1100000 },
+	{10, 1200000 },
+	{11, 1300000 },
+	{12, 1400000 },
+	{13, 1500000 },
+	{14, CPUFREQ_TABLE_END },
+};
+
+static struct cpufreq_frequency_table freq_table_1p7GHz[] = {
+	{ 0,   51000 },
+	{ 1,  102000 },
+	{ 2,  204000 },
+	{ 3,  370000 },
+	{ 4,  475000 },
+	{ 5,  620000 },
+	{ 6,  760000 },
+	{ 7,  910000 },
+	{ 8, 1000000 },
+	{ 9, 1150000 },
+	{10, 1300000 },
+	{11, 1400000 },
+	{12, 1500000 },
+	{13, 1600000 },
+	{14, 1700000 },
+	{15, CPUFREQ_TABLE_END },
+};
+
 static struct cpufreq_frequency_table freq_table_1p9GHz[] = {
 	{ 0,   51000 },
 	{ 1,  102000 },
@@ -4880,8 +4964,13 @@ static struct cpufreq_frequency_table freq_table_1p9GHz[] = {
 };
 
 static struct tegra_cpufreq_table_data cpufreq_tables[] = {
-	{ freq_table_300MHz,  0,  1 },
-	{ freq_table_1p9GHz,  0, 18 },
+	{ freq_table_300MHz, 0,  1 },
+	{ freq_table_1p0GHz, 2,  8 },
+	{ freq_table_1p3GHz, 2, 10 },
+	{ freq_table_1p4GHz, 2, 11 },
+	{ freq_table_1p5GHz, 2, 12 },
+	{ freq_table_1p7GHz, 2, 12 },
+	{ freq_table_1p9GHz, 2, 12 },
 };
 
 static int clip_cpu_rate_limits(
