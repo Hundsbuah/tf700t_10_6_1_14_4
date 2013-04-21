@@ -65,16 +65,16 @@ static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.max_millivolts = HUNDSBUAH_CPU_VOLTAGE_CAP,
-	.min_millivolts = HUNDSBUAH_MIN_CPU_VOLTAGE,
+	.max_millivolts = HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,
+	.min_millivolts = HUNDSBUAH_TF700T_MIN_CPU_VOLTAGE,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 };
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.max_millivolts = HUNDSBUAH_CORE_VOLTAGE_CAP,
-	.min_millivolts = HUNDSBUAH_MIN_CORE_VOLTAGE,
+	.max_millivolts = HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP,
+	.min_millivolts = HUNDSBUAH_TF700T_MIN_CORE_VOLTAGE,
 	.step = VDD_SAFE_STEP,
 };
 
@@ -935,10 +935,18 @@ gpu_voltages_show(struct kobject *kobj, struct kobj_attribute *attr,
 {
    unsigned int idx = 0;
    int ret = 0;
+   int soc_id = 0;
+   struct clk *three_d = tegra_get_clock_by_name("3d");
+
+   soc_id = tegra_soc_speedo_id();
 
    for(idx = 0; idx <= HUNDSBUAH_CORE_MAXFREQ_IDX; idx++)
    {
       ret += sprintf (&buf[ret], "%d ", core_millivolts[idx]);
+      if(soc_id == 2 && three_d->dvfs->freqs[idx] == HUNDSBUAH_TF700T_MAX_CORE_FREQUENCY)
+    	  break;
+      if(soc_id == 1 && three_d->dvfs->freqs[idx] == HUNDSBUAH_TF300T_MAX_CORE_FREQUENCY)
+    	  break;
    }
 
    ret += sprintf(&buf[ret], "\n");
@@ -990,8 +998,8 @@ core_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
             break;
          }
       }
-      if(level > HUNDSBUAH_MAX_CORE_VOLTAGE)
-         level = HUNDSBUAH_MAX_CORE_VOLTAGE;
+      if(level > HUNDSBUAH_TF700T_MAX_CORE_VOLTAGE)
+         level = HUNDSBUAH_TF700T_MAX_CORE_VOLTAGE;
 	}
 	mutex_lock(&core_cap_lock);
 	user_core_cap.level = level;

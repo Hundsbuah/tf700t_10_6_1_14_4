@@ -2,6 +2,16 @@
 #ifndef _HUNDSBUAH_H_
 #define _HUNDSBUAH_H_
 
+/* TF300T
+ * SOCID = 1
+ * CPUID = 7
+ */
+
+/* TF700T
+ * SOCID = 2
+ * CPUID = 5
+ */
+
 /* Tegra3 TF700/T OC */
 
 /*****************************/
@@ -11,15 +21,15 @@
 /*****************************/
 
 /* cap voltages */
-#define HUNDSBUAH_CPU_VOLTAGE_CAP         (1445)   /* mV */
-#define HUNDSBUAH_CORE_VOLTAGE_CAP        (1465)   /* mV */
+#define HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP         (1445)   /* mV */
+#define HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP        (1465)   /* mV */
 
 /* max and min voltages */
-#define HUNDSBUAH_MIN_CPU_VOLTAGE         (600)    /* mV */
-#define HUNDSBUAH_MAX_CPU_VOLTAGE         (1425)   /* mV */
+#define HUNDSBUAH_TF700T_MIN_CPU_VOLTAGE         (600)    /* mV */
+#define HUNDSBUAH_TF700T_MAX_CPU_VOLTAGE         (1425)   /* mV */
 
-#define HUNDSBUAH_MIN_CORE_VOLTAGE        (850)    /* mV */
-#define HUNDSBUAH_MAX_CORE_VOLTAGE        (1460)   /* mV */
+#define HUNDSBUAH_TF700T_MIN_CORE_VOLTAGE        (850)    /* mV */
+#define HUNDSBUAH_TF700T_MAX_CORE_VOLTAGE        (1460)   /* mV */
 
 
 /*****************************/
@@ -37,13 +47,17 @@
         (DIV_ROUND_UP((HUNDSBUAH_CORE_FREQUENCY_CAP), 2)) /* MHz */
 
 /* max. frequencys */
-#define HUNDSBUAH_MAX_CPU_FREQUENCY       (1900)   /* MHz */
-#define HUNDSBUAH_MAX_CORE_FREQUENCY      (775)    /* MHz */
-#define HUNDSBUAH_MAX_HOST1X_FREQUENCY    (325)    /* MHz */
+#define HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY       (1900)   /* MHz */
+#define HUNDSBUAH_TF700T_MAX_CORE_FREQUENCY      (775)    /* MHz */
+#define HUNDSBUAH_TF700T_MAX_HOST1X_FREQUENCY    (350)    /* MHz */
 
-#define HUNDSBUAH_SYSTEM_NORMAL_MODE_FREQUENCY     (HUNDSBUAH_MAX_CPU_FREQUENCY * 1000)    /* kHz */
-#define HUNDSBUAH_SYSTEM_BALANCE_MODE_FREQUENCY    (HUNDSBUAH_MAX_CPU_FREQUENCY * 1000)    /* kHz */
-#define HUNDSBUAH_SYSTEM_PWRSAVE_MODE_FREQUENCY    (HUNDSBUAH_MAX_CPU_FREQUENCY * 1000)    /* kHz */
+#define HUNDSBUAH_TF300T_MAX_CPU_FREQUENCY       (1500)   /* MHz */
+#define HUNDSBUAH_TF300T_MAX_CORE_FREQUENCY      (416)    /* MHz */
+#define HUNDSBUAH_TF300T_MAX_HOST1X_FREQUENCY    (267)    /* MHz */
+
+#define HUNDSBUAH_SYSTEM_NORMAL_MODE_FREQUENCY     (HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000)    /* kHz */
+#define HUNDSBUAH_SYSTEM_BALANCE_MODE_FREQUENCY    (HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000)    /* kHz */
+#define HUNDSBUAH_SYSTEM_PWRSAVE_MODE_FREQUENCY    (HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000)    /* kHz */
 
 
 /* This is the table index for the max/oc/last gpu

@@ -105,7 +105,7 @@ static struct board_info pmu_board_info;
 static struct board_info display_board_info;
 static struct board_info camera_board_info;
 
-static int pmu_core_edp = HUNDSBUAH_CORE_VOLTAGE_CAP;	/* default 1.2V EDP limit */
+static int pmu_core_edp = HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP;	/* default 1.2V EDP limit */
 static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 

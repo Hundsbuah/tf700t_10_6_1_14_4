@@ -558,15 +558,15 @@ static const int cpu_speedo_nominal_millivolts[] = {
       1350,       /* speedo_id 1 */
       1350,       /* speedo_id 2 */
       1350,       /* speedo_id 3 */
-      HUNDSBUAH_CPU_VOLTAGE_CAP,       /* speedo_id 4 */
-      HUNDSBUAH_CPU_VOLTAGE_CAP,       /* speedo_id 5 */
-      HUNDSBUAH_CPU_VOLTAGE_CAP,       /* speedo_id 6 */
+      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 4 */
+      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 5 */
+      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 6 */
       1350,       /* speedo_id 7 */
       1150,       /* speedo_id 8 */
       1007,       /* speedo_id 9 */
       916,        /* speedo_id 10 */
       850,        /* speedo_id 11 */
-      HUNDSBUAH_CPU_VOLTAGE_CAP,       /* speedo_id 12 */
+      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 12 */
       1350,       /* speedo_id 13 */
       950,        /* speedo_id 14 */
       900 };      /* speedo_id 15 */
@@ -588,7 +588,7 @@ int tegra_core_speedo_mv(void)
 		/* fall thru for T30L or T30SL */
 	case 2:
 		if (cpu_speedo_id != 13)
-			return HUNDSBUAH_CORE_VOLTAGE_CAP;
+			return HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP;
 		/* T37 */
 		return 1350;
 	case 3:
