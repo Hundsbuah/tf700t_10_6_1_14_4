@@ -99,8 +99,6 @@ on boot
     chown system system /sys/kernel/tegra_cap/core_cap_level
     chown system system /sys/kernel/tegra_cap/core_cap_state
     chown system system /sys/module/cpu_tegra/parameters/boot_finished
-    #chown system system /sys/kernel/tegra_cap/cbus_cap_level
-    #chown system system /sys/kernel/tegra_cap/cbus_cap_state
     chown system system /sys/module/cpu_tegra/parameters/cpu_user_cap
     chown system system /sys/module/cpu_tegra3/parameters/mp_overhead
     chown system system /sys/module/cpu_tegra/parameters/system_mode
