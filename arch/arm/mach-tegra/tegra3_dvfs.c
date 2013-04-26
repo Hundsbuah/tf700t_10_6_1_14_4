@@ -935,6 +935,31 @@ core_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
 }
 
 static ssize_t
+gpu_freqs_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+   unsigned int idx = 0;
+   int ret = 0;
+   struct clk *three_d = tegra_get_clock_by_name("3d");
+
+   for(idx = 0; idx <= HUNDSBUAH_CORE_MAXFREQ_IDX; idx++)
+   {
+      ret += sprintf (&buf[ret], "%d ", three_d->dvfs->freqs[idx] / 1000000);
+   }
+
+   ret += sprintf(&buf[ret], "\n");
+
+	return ret;
+}
+
+static ssize_t
+gpu_freqs_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+   return count;
+}
+
+static ssize_t
 gpu_voltages_show(struct kobject *kobj, struct kobj_attribute *attr,
 		    char *buf)
 {
@@ -1094,6 +1119,8 @@ static struct kobj_attribute cbus_level_attribute =
 	__ATTR(cbus_cap_level, 0644, cbus_cap_level_show, cbus_cap_level_store);
 static struct kobj_attribute gpu_voltages_attribute =
 	__ATTR(gpu_voltages, 0644, gpu_voltages_show, gpu_voltages_store);
+static struct kobj_attribute gpu_freqs_attribute =
+	__ATTR(gpu_freqs, 0644, gpu_freqs_show, gpu_freqs_store);
    
 const struct attribute *cap_attributes[] = {
 	&cap_state_attribute.attr,
@@ -1101,6 +1128,7 @@ const struct attribute *cap_attributes[] = {
 	&cbus_state_attribute.attr,
 	&cbus_level_attribute.attr,
    &gpu_voltages_attribute.attr,
+   &gpu_freqs_attribute.attr,
 	NULL,
 };
 
