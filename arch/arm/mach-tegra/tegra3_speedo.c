@@ -557,10 +557,10 @@ static const int cpu_speedo_nominal_millivolts[] = {
       1125,       /* speedo_id 0 */
       1350,       /* speedo_id 1 */
       1350,       /* speedo_id 2 */
-      1350,       /* speedo_id 3 */
-      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 4 */
-      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 5 */
-      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 6 */
+      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 3 TF201*/
+      1237,       /* speedo_id 4 */
+      HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP,       /* speedo_id 5 TF700T*/
+      1237,       /* speedo_id 6 */
       1350,       /* speedo_id 7 */
       1150,       /* speedo_id 8 */
       1007,       /* speedo_id 9 */

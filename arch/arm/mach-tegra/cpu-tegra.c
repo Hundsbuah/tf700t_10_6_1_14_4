@@ -43,7 +43,7 @@
 #include "clock.h"
 #include "cpu-tegra.h"
 #include "dvfs.h"
-
+#include "fuse.h"
 #include "pm.h"
 
 #include <linux/seq_file.h>
@@ -448,8 +448,12 @@ static void edp_update_limit(void)
 #ifdef CONFIG_TEGRA_EDP_EXACT_FREQ
 	if(boot_finished == 0)
    {
-     pr_info("%s: Limiting edp value from %u to %u during boot!\n", __func__, limit, HUNDSBUAH_CPU_BOOT_FREQUENCY * 1000);
-     edp_limit = (HUNDSBUAH_CPU_BOOT_FREQUENCY * 1000);
+     edp_limit = HUNDSBUAH_CPU_BOOT_FREQUENCY_DEFAULT;
+     if(tegra_cpu_speedo_id() == 5)/* TF700T */
+        edp_limit = (HUNDSBUAH_CPU_BOOT_FREQUENCY * 1000);
+     if(tegra_cpu_speedo_id() == 3)/* TF201 */
+        edp_limit = ((HUNDSBUAH_CPU_BOOT_FREQUENCY - 300) * 1000);        
+     pr_info("%s: Limiting cpu speed from %u to %u during boot!\n", __func__, limit, edp_limit);
    }
    else
      edp_limit = limit;

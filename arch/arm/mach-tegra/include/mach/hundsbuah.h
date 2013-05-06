@@ -2,9 +2,9 @@
 #ifndef _HUNDSBUAH_H_
 #define _HUNDSBUAH_H_
 
-/* TF300T
- * SOCID = 1
- * CPUID = 7
+/* TF201
+ * SOCID = 2
+ * CPUID = 3
  */
 
 /* TF700T
@@ -83,8 +83,8 @@
  * "echo 760000 > /sys/module/cpu_tegra/parameters/pwr_cap_limit_1"
  * and frequencys above 1850 are still possible to other tablet users who can handle
  * high frequencys.
- * Just to be sure that boot_finished is set after pwr_cap_limit_1 was set!
+ * Just to be sure that boot_finished is set after pwr_cap_limit_X was set!
  */
-#define HUNDSBUAH_CPU_BOOT_FREQUENCY   (1500)   /* MHz */
-
+#define HUNDSBUAH_CPU_BOOT_FREQUENCY         (1500) /* MHz */
+#define HUNDSBUAH_CPU_BOOT_FREQUENCY_DEFAULT (1000) /* MHz */
 #endif
