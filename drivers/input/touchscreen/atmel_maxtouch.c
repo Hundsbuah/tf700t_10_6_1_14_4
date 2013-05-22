@@ -1755,7 +1755,7 @@ void force_release_pos(struct mxt_data *mxt)
 
 	input_sync(mxt->input);
 }
-
+static unsigned int reverse_axis = 0;
 void process_T9_message(u8 *message, struct mxt_data *mxt, int last_touch)
 {
 
@@ -1841,7 +1841,8 @@ void process_T9_message(u8 *message, struct mxt_data *mxt, int last_touch)
 				xpos >>= 2;
 			if (mxt->max_y_val < 1024)
 				ypos >>= 2;
-
+            if (reverse_axis)
+            	xpos = mxt->max_x_val - xpos;
 			stored_x[touch_number] = xpos;
 			stored_y[touch_number] = ypos;
 			fingerInfo[touch_number].x=xpos;
@@ -1929,6 +1930,30 @@ void process_T9_message(u8 *message, struct mxt_data *mxt, int last_touch)
 	}
 	return;
 }
+
+static int reverse_axis_set(const char *arg, const struct kernel_param *kp)
+{
+   int ret = 0;
+   ret = param_set_uint(arg, kp);
+
+   if(ret)
+	   return ret;
+
+   pr_info("%s: reverse_axis set to 1!\n", __func__);
+
+   return ret;
+}
+
+static int reverse_axis_get(char *buffer, const struct kernel_param *kp)
+{
+   return param_get_uint(buffer, kp);
+}
+
+static struct kernel_param_ops reverse_axis_ops = {
+	.set = reverse_axis_set,
+	.get = reverse_axis_get,
+};
+module_param_cb(reverse_axis, &reverse_axis_ops, &reverse_axis, 0644);
 
 int process_message(u8 *message, u8 object, struct mxt_data *mxt)
 {
