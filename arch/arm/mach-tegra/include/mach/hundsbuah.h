@@ -21,15 +21,15 @@
 /*****************************/
 
 /* cap voltages */
-#define HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP         (1425)   /* mV */
-#define HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP        (1460)   /* mV */
+#define HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP         (1400)   /* mV */
+#define HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP        (1462)   /* mV */
 
 /* max and min voltages */
 #define HUNDSBUAH_TF700T_MIN_CPU_VOLTAGE         (600)    /* mV */
-#define HUNDSBUAH_TF700T_MAX_CPU_VOLTAGE         (1425)   /* mV */
+#define HUNDSBUAH_TF700T_MAX_CPU_VOLTAGE         (1400)   /* mV */
 
 #define HUNDSBUAH_TF700T_MIN_CORE_VOLTAGE        (850)    /* mV */
-#define HUNDSBUAH_TF700T_MAX_CORE_VOLTAGE        (1460)   /* mV */
+#define HUNDSBUAH_TF700T_MAX_CORE_VOLTAGE        (1462)   /* mV */
 
 
 /*****************************/
@@ -50,10 +50,6 @@
 #define HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY       (1900)   /* MHz */
 #define HUNDSBUAH_TF700T_MAX_CORE_FREQUENCY      (775)    /* MHz */
 #define HUNDSBUAH_TF700T_MAX_HOST1X_FREQUENCY    (350)    /* MHz */
-
-#define HUNDSBUAH_TF300T_MAX_CPU_FREQUENCY       (1500)   /* MHz */
-#define HUNDSBUAH_TF300T_MAX_CORE_FREQUENCY      (416)    /* MHz */
-#define HUNDSBUAH_TF300T_MAX_HOST1X_FREQUENCY    (267)    /* MHz */
 
 #define HUNDSBUAH_SYSTEM_NORMAL_MODE_FREQUENCY     (HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000)    /* kHz */
 #define HUNDSBUAH_SYSTEM_BALANCE_MODE_FREQUENCY    (HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000)    /* kHz */
