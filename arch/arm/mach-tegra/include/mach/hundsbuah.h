@@ -55,17 +55,6 @@
 #define HUNDSBUAH_SYSTEM_BALANCE_MODE_FREQUENCY    (HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000)    /* kHz */
 #define HUNDSBUAH_SYSTEM_PWRSAVE_MODE_FREQUENCY    (HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000)    /* kHz */
 
-
-/* This is the table index for the max/oc/last gpu
- * frequency in the dvfs table for tf700t
- */
-#define HUNDSBUAH_CORE_MAXFREQ_IDX  (12)
-/* This is the table index for the max/oc/last cpu
- * frequency in the dvfs table for tf700t
- */
-#define HUNDSBUAH_CPU_MAXFREQ_IDX   (43)
-
-
 /* Limit max. cpu speed until booting is finished.
  * This has been added because some devices cant handle frequencys above
  * 1850MHz (but i want to provide them) and when the cpu gets initialized, its running a short time at
@@ -81,6 +70,7 @@
  * high frequencys.
  * Just to be sure that boot_finished is set after pwr_cap_limit_X was set!
  */
-#define HUNDSBUAH_CPU_BOOT_FREQUENCY         (1500) /* MHz */
-#define HUNDSBUAH_CPU_BOOT_FREQUENCY_DEFAULT (1000) /* MHz */
+#define HUNDSBUAH_CPU_BOOT_FREQUENCY_TF700T         (1500000) /* kHz */
+#define HUNDSBUAH_CPU_BOOT_FREQUENCY_TF201          (1200000) /* kHz */
+#define HUNDSBUAH_CPU_BOOT_FREQUENCY_DEFAULT        (1000000) /* kHz */
 #endif

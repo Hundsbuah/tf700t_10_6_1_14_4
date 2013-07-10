@@ -44,6 +44,7 @@
 #include "cpu-tegra.h"
 #include "dvfs.h"
 #include "fuse.h"
+
 #include "pm.h"
 
 #include <linux/seq_file.h>
@@ -62,7 +63,7 @@ static struct cpufreq_frequency_table *freq_table;
 static unsigned int freq_table_size=0;;
 static struct clk *cpu_clk;
 static struct clk *emc_clk;
-static unsigned int boot_finished = 0;
+static struct clk *cpu_lp_clk;
 
 static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
@@ -75,6 +76,7 @@ static bool force_policy_max;
 static bool camera_enable = 0;
 static unsigned long camera_enable_cpu_emc_mini_rate = 0;
 static unsigned long camera_enable_emc_mini_rate = 0;
+static unsigned int boot_finished = 0;
 
 int Asus_camera_enable_set_emc_rate(unsigned long rate)
 {
@@ -450,9 +452,9 @@ static void edp_update_limit(void)
    {
      edp_limit = HUNDSBUAH_CPU_BOOT_FREQUENCY_DEFAULT;
      if(tegra_cpu_speedo_id() == 5)/* TF700T */
-        edp_limit = (HUNDSBUAH_CPU_BOOT_FREQUENCY * 1000);
+        edp_limit = HUNDSBUAH_CPU_BOOT_FREQUENCY_TF700T;
      if(tegra_cpu_speedo_id() == 3)/* TF201 */
-        edp_limit = ((HUNDSBUAH_CPU_BOOT_FREQUENCY - 300) * 1000);        
+        edp_limit = HUNDSBUAH_CPU_BOOT_FREQUENCY_TF201;        
      pr_info("%s: Limiting cpu speed from %u to %u during boot!\n", __func__, limit, edp_limit);
    }
    else
@@ -961,6 +963,31 @@ int tegra_suspended_target(unsigned int target_freq)
 	return tegra_update_cpu_speed(new_speed);
 }
 
+int tegra_cpu_late_resume_set_speed_cap(int speed)
+{
+	int ret = 0;
+	unsigned int new_speed = speed;
+
+	mutex_lock(&tegra_cpu_lock);
+
+	if (is_suspended){
+		mutex_unlock(&tegra_cpu_lock);
+		return -EBUSY;
+	}
+
+	new_speed = ASUS_governor_speed(new_speed);
+	new_speed = tegra_throttle_governor_speed(new_speed);
+	new_speed = edp_governor_speed(new_speed);
+
+	printk("tegra_cpu_late_resume_set_speed_cap new_speed =%u\n",new_speed );
+	ret = tegra_update_cpu_speed(new_speed);
+	if (ret == 0)
+		tegra_auto_hotplug_governor(new_speed, false);
+
+	mutex_unlock(&tegra_cpu_lock);
+	return ret;
+}
+
 static int tegra_target(struct cpufreq_policy *policy,
 		       unsigned int target_freq,
 		       unsigned int relation)
@@ -999,6 +1026,28 @@ _out:
 	return ret;
 }
 
+extern u64 global_wake_status;
+extern void tegra_exit_lp_mode(void);
+extern void tegra_enter_lp_mode(void);
+void check_cpu_state(void)
+{
+	printk("check_cpu_state cpu_clk->parent->name=%s is_lp_cluster()=%u\n",cpu_clk->parent->name,is_lp_cluster());
+	if(is_lp_cluster() && (!strncmp(cpu_clk->parent->name,"cpu_g",5)))
+		tegra_exit_lp_mode();
+	//else if(!is_lp_cluster() && (!strncmp(cpu_clk->parent->name,"cpu_lp",6)))
+	//tegra_enter_lp_mode();
+}
+void unlock_cpu_lp_mode(void)
+{
+	is_suspended=false;
+	if (global_wake_status){
+		printk("unlock_cpu_lp_mode: restoring frequency+\n");
+		global_wake_status=0;
+		check_cpu_state();
+		printk("unlock_cpu_lp_mode: restoring frequency-\n");
+	}
+	tegra_cpu_late_resume_set_speed_cap(HUNDSBUAH_TF700T_MAX_CPU_FREQUENCY * 1000);
+}
 
 static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
@@ -1006,18 +1055,39 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	mutex_lock(&tegra_cpu_lock);
 	if (event == PM_SUSPEND_PREPARE) {
 		is_suspended = true;
+		global_wake_status=0;
 		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
 			freq_table[suspend_index].frequency);
 		tegra_update_cpu_speed(freq_table[suspend_index].frequency);
 		tegra_auto_hotplug_governor(
 			freq_table[suspend_index].frequency, true);
 	} else if (event == PM_POST_SUSPEND) {
-		unsigned int freq;
-		is_suspended = false;
-		tegra_cpu_edp_init(true);
-		tegra_cpu_set_speed_cap(&freq);
-		pr_info("Tegra cpufreq resume: restoring frequency to %d kHz\n",
-			freq);
+		if(global_wake_status)
+		{
+				unsigned int freq;
+				is_suspended = false;
+				pr_info("Tegra cpufreq resume: tegra_cpu_edp_init is_lp_cluster()=%u cpu_clk->parent->name=%s +\n",is_lp_cluster(),cpu_clk->parent->name);
+				tegra_cpu_edp_init(true);
+				check_cpu_state();
+				tegra_cpu_set_speed_cap(&freq);
+				pr_info("Tegra cpufreq resume: restoring frequency to %d kHz\n", freq);
+		}
+		else
+		{
+				tegra_cpu_edp_init(true);
+				if(is_lp_cluster() && (!strncmp(cpu_clk->parent->name,"cpu_g",5)))
+				{
+					pr_info("Tegra cpufreq resume: cpu in LP mode, but use cpu_g  %u %s\n",is_lp_cluster(),cpu_clk->parent->name);
+					tegra_exit_lp_mode();
+					clk_set_parent(cpu_clk, cpu_lp_clk);
+				}
+				else if(!is_lp_cluster() && (!strncmp(cpu_clk->parent->name,"cpu_lp",6)))
+				{
+					pr_info("Tegra cpufreq resume: cpu in G mode, but use cpu_lp %u %s\n",is_lp_cluster(),cpu_clk->parent->name);
+					tegra_enter_lp_mode();
+				}
+				pr_info("Tegra cpufreq resume: cpu in LP mode! is_lp_cluster()=%u cpu_clk->parent->name=%s\n",is_lp_cluster(),cpu_clk->parent->name);
+		}
 	}
 	mutex_unlock(&tegra_cpu_lock);
 
@@ -1028,7 +1098,7 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 	.notifier_call = tegra_pm_notify,
 };
 
-void rebuild_max_freq_table(unsigned int max_rate)
+static inline void rebuild_max_freq_table(void)
 {
 	power_mode_table[SYSTEM_NORMAL_MODE]  = (HUNDSBUAH_SYSTEM_NORMAL_MODE_FREQUENCY);
 	power_mode_table[SYSTEM_BALANCE_MODE] = (HUNDSBUAH_SYSTEM_BALANCE_MODE_FREQUENCY);
@@ -1052,14 +1122,14 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 
 	clk_enable(emc_clk);
 	clk_enable(cpu_clk);
-
+	cpu_lp_clk = clk_get_sys(NULL, "cpu_lp");
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
 	cpufreq_frequency_table_get_attr(freq_table, policy->cpu);
 	policy->cur = tegra_getspeed(policy->cpu);
 	target_cpu_speed[policy->cpu] = policy->cur;
 
 	/* FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 70 * 1000;
+	policy->cpuinfo.transition_latency = 300 * 1000;
 
 	policy->shared_type = CPUFREQ_SHARED_TYPE_ALL;
 	cpumask_copy(policy->related_cpus, cpu_possible_mask);
@@ -1143,8 +1213,7 @@ static int __init tegra_cpufreq_init(void)
 	for (i= 0; freq_table[i].frequency !=
 				CPUFREQ_TABLE_END; i++)
 				freq_table_size++;
-
-	rebuild_max_freq_table( freq_table[freq_table_size-1].frequency);
+	rebuild_max_freq_table();
 	printk("tegra_cpufreq_init freq_table_size=%u max rate=%u\n", freq_table_size, freq_table[freq_table_size-1].frequency);
 
 	tegra_cpu_edp_init(false);

@@ -1617,6 +1617,7 @@ static int tegra3_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	unsigned long input_rate;
 	const struct clk_pll_freq_table *sel;
 	struct clk_pll_freq_table cfg;
+	unsigned long output_real = 0;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 
@@ -1723,7 +1724,7 @@ static int tegra3_pll_clk_set_rate(struct clk *c, unsigned long rate)
 				}
 				//printk("div=%d, y=%lu, output_temp=%ld, z=%ld, min=%lu, divM=%d \n", div, y, output_temp, z, min, divM);
 			}
-			unsigned long output_real = input*divN/divM;
+			output_real = input*divN/divM;
 			printk("output_real=%lu\n", output_real);
 
 			cfg.m = divM;
