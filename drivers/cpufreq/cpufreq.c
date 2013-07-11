@@ -69,7 +69,7 @@ static DEFINE_PER_CPU(int, cpufreq_policy_cpu);
 static DEFINE_PER_CPU(struct rw_semaphore, cpu_policy_rwsem);
 
 #define lock_policy_rwsem(mode, cpu)					\
-static int lock_policy_rwsem_##mode					\
+int lock_policy_rwsem_##mode					\
 (int cpu)								\
 {									\
 	int policy_cpu = per_cpu(cpufreq_policy_cpu, cpu);		\
@@ -87,14 +87,14 @@ lock_policy_rwsem(read, cpu);
 
 lock_policy_rwsem(write, cpu);
 
-static void unlock_policy_rwsem_read(int cpu)
+void unlock_policy_rwsem_read(int cpu)
 {
 	int policy_cpu = per_cpu(cpufreq_policy_cpu, cpu);
 	BUG_ON(policy_cpu == -1);
 	up_read(&per_cpu(cpu_policy_rwsem, policy_cpu));
 }
 
-static void unlock_policy_rwsem_write(int cpu)
+void unlock_policy_rwsem_write(int cpu)
 {
 	int policy_cpu = per_cpu(cpufreq_policy_cpu, cpu);
 	BUG_ON(policy_cpu == -1);
@@ -205,8 +205,7 @@ static void adjust_jiffies(unsigned long val, struct cpufreq_freqs *ci)
 		pr_debug("saving %lu as reference value for loops_per_jiffy; "
 			"freq is %u kHz\n", l_p_j_ref, l_p_j_ref_freq);
 	}
-	if ((val == CPUFREQ_PRECHANGE  && ci->old < ci->new) ||
-	    (val == CPUFREQ_POSTCHANGE && ci->old > ci->new) ||
+	if ((val == CPUFREQ_POSTCHANGE  && ci->old != ci->new) ||
 	    (val == CPUFREQ_RESUMECHANGE || val == CPUFREQ_SUSPENDCHANGE)) {
 		loops_per_jiffy = cpufreq_scale(l_p_j_ref, l_p_j_ref_freq,
 								ci->new);
