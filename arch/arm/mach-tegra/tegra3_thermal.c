@@ -87,7 +87,10 @@ static int tegra_thermal_get_temp_unlocked(long *tj_temp, bool offsetted)
 	} else {
 		ret = -1;
 	}
-
+#if defined(CONFIG_THROTTLE_TEGRA3_GPU)
+	extern int current_gpu_temp;
+	dev->get_temp(dev->data, &current_gpu_temp);
+#endif
 	return ret;
 }
 

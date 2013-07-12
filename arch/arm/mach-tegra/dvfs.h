@@ -168,5 +168,8 @@ static inline int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 static inline void tegra_dvfs_age_cpu(int cur_linear_age)
 { return; }
 #endif
-
+#if defined(CONFIG_THROTTLE_TEGRA3_GPU)
+void throttle_tegra3_gpu(int voltage);
+int getCurrentGpuVoltage(void);
+#endif
 #endif

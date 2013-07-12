@@ -49,6 +49,13 @@
 
 #include <linux/seq_file.h>
 
+#if defined(CONFIG_THROTTLE_TEGRA3_GPU)
+#define TEGRA3_GPU_THROTTLING_TEMP (65) /* °C when gpu throttling starts */
+#define TEGRA3_GPU_THROTTLING_VOLTAGE (1300) /* voltage that is applied when throttling */
+int current_gpu_temp = 0; /* this is the cpu temperature as there is no real gpu temperature */
+static unsigned int enable_gpu_throttling = 1;
+#endif
+
 #define SYSTEM_NORMAL_MODE	(0)
 #define SYSTEM_BALANCE_MODE	(1)
 #define SYSTEM_PWRSAVE_MODE	(2)
@@ -708,12 +715,42 @@ static int boot_finished_get(char *buffer, const struct kernel_param *kp)
    pr_info("%s: boot_finished value: %u\n", __func__, boot_finished);
    return param_get_uint(buffer, kp);
 }
-
 static struct kernel_param_ops boot_finished_ops = {
 	.set = boot_finished_set,
 	.get = boot_finished_get,
 };
 module_param_cb(boot_finished, &boot_finished_ops, &boot_finished, 0644);
+
+
+#if defined(CONFIG_THROTTLE_TEGRA3_GPU)
+static int gpu_throttling_set(const char *arg, const struct kernel_param *kp)
+{
+   int ret = 0;
+   ret = param_set_uint(arg, kp);
+
+   if(ret)
+	   return ret;
+
+   edp_update_limit();
+   ret = tegra_cpu_set_speed_cap(NULL);
+
+   return ret;
+}
+
+static int gpu_throttling_get(char *buffer, const struct kernel_param *kp)
+{
+	if(enable_gpu_throttling)
+	    pr_info("%s: gpu throttling is enabled!\n", __func__);
+	else
+	    pr_info("%s: gpu throttling is disabled!\n", __func__);
+    return param_get_uint(buffer, kp);
+}
+static struct kernel_param_ops enable_gpu_throttling_ops = {
+	.set = gpu_throttling_set,
+	.get = gpu_throttling_get,
+};
+module_param_cb(enable_gpu_throttling, &enable_gpu_throttling_ops, &enable_gpu_throttling, 0644);
+#endif
 
 #ifdef CONFIG_DEBUG_FS
 static int pwr_mode_table_debugfs_show(struct seq_file *s, void *data)
@@ -928,6 +965,25 @@ unsigned long tegra_cpu_highest_speed(void) {
 	return rate;
 }
 
+#if defined(CONFIG_THROTTLE_TEGRA3_GPU)
+static inline void throttle_gpu_on_high_temperature(void)
+{
+	static unsigned int already_throttling = 0;
+	static int original_voltage = 0;
+	if((current_gpu_temp/1000 > TEGRA3_GPU_THROTTLING_TEMP) && (already_throttling == 0))
+	{
+		original_voltage = getCurrentGpuVoltage();
+		throttle_tegra3_gpu(TEGRA3_GPU_THROTTLING_VOLTAGE);
+		already_throttling = 1;
+	}
+	if((current_gpu_temp/1000 <= TEGRA3_GPU_THROTTLING_TEMP) && (already_throttling == 1))
+	{
+		already_throttling = 0;
+		throttle_tegra3_gpu(original_voltage);
+	}
+}
+#endif
+
 int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 {
 	int ret = 0;
@@ -936,9 +992,13 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 	if (is_suspended)
 		return -EBUSY;
 
-       new_speed = ASUS_governor_speed(new_speed);
+    new_speed = ASUS_governor_speed(new_speed);
 	new_speed = tegra_throttle_governor_speed(new_speed);
 	new_speed = edp_governor_speed(new_speed);
+#if defined(CONFIG_THROTTLE_TEGRA3_GPU)
+	if(enable_gpu_throttling)
+		throttle_gpu_on_high_temperature();
+#endif
 	//new_speed = user_cap_speed(new_speed);
 	if (speed_cap)
 		*speed_cap = new_speed;
@@ -1006,11 +1066,14 @@ static int tegra_target(struct cpufreq_policy *policy,
 		goto _out;
 
 	if( (ret >= 0) && (idx >= 0) && (idx < freq_table_size) )
-	freq = freq_table[idx].frequency;
+		freq = freq_table[idx].frequency;
 	else{
 		printk("[warning] tegra_target ret=%d idx=%d cpu=%u\n", ret, idx, policy->cpu);
 		goto _out;
 	}
+	/* no need to proceed if the new freq is equal to cur */
+	if (freq == policy->cur)
+		goto _out;
 
 	cpu=policy->cpu;
 	if( cpu >= 0 && cpu < nr_cpu_ids){

@@ -338,6 +338,11 @@ config VOLTAGE_CONTROL
 	help
 	User custom voltage control interface
 
+config THROTTLE_TEGRA3_GPU
+    bool "Enable gpu throttling when cpu getting too hot"
+    depends on TEGRA_SILICON_PLATFORM && TEGRA_THERMAL_THROTTLE
+    default y
+    
 config TEGRA_CPU_DVFS
 	bool "Enable voltage scaling on Tegra CPU"
 	depends on TEGRA_SILICON_PLATFORM
