@@ -368,7 +368,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-	           -mtune=cortex-a9 -march=armv7-a -mfpu=neon \
+	           -mtune=cortex-a8 -march=armv7-a -mfpu=neon \
 		   -fpredictive-commoning -fgcse-after-reload -ftree-vectorize \
 		   -fipa-cp-clone -fsingle-precision-constant -pipe \
 		   -funswitch-loops -floop-interchange \
