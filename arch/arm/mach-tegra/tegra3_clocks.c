@@ -4961,7 +4961,7 @@ static struct cpufreq_frequency_table freq_table_1p8GHz[] = {
 	{16, CPUFREQ_TABLE_END },
 };
 
-static struct cpufreq_frequency_table freq_table_1p9GHz[] = {
+static struct cpufreq_frequency_table freq_table_1p85GHz[] = {
 	{ 0,   51000 },
 	{ 1,  102000 },
 	{ 2,  204000 },
@@ -4980,8 +4980,7 @@ static struct cpufreq_frequency_table freq_table_1p9GHz[] = {
 	{15, 1750000 },
     {16, 1800000 },
     {17, 1850000 },
-	{18, 1900000 },
-	{19, CPUFREQ_TABLE_END },
+	{18, CPUFREQ_TABLE_END },
 };
 
 static struct tegra_cpufreq_table_data cpufreq_tables[] = {
@@ -4992,7 +4991,7 @@ static struct tegra_cpufreq_table_data cpufreq_tables[] = {
 	{ freq_table_1p5GHz, 0, 13 },
 	{ freq_table_1p7GHz, 0, 14 },
   	{ freq_table_1p8GHz, 0, 15 },
-	{ freq_table_1p9GHz, 0, 18 },
+	{ freq_table_1p85GHz, 0, 17 },
 };
 
 static int clip_cpu_rate_limits(
@@ -5029,8 +5028,8 @@ static int clip_cpu_rate_limits(
 		return ret;
 	}
 	cpu_clk_lp->max_rate = freq_table[idx].frequency * 1000;
-	cpu_clk_g->min_rate = freq_table[idx-1].frequency * 1000;
-	data->suspend_index = idx;
+	cpu_clk_g->min_rate = freq_table[idx].frequency * 1000;
+	data->suspend_index = 0;
 	return 0;
 }
 
