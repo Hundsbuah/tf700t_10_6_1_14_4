@@ -1,33 +1,7 @@
 /*
  * Joe's tiny RCU, for small SMP systems.
  *
- * The main purpose of jRCU is to bring together and execute on a single
- * CPU the RCU end-of-batch operations of all CPUs.  This relieves all but
- * one CPU from this periodic responsibility. This is important when the
- * system has user supplied realtime applications that require the full
- * use of CPUs dedicated to those applications.
- *
- * A secondary purpose is to come up with an RCU implementation that is as
- * simple as possible yet still suitable for SMP platforms, at least the
- * smaller ones.  In this regard it fills the gap between TinyRCU, which
- * runs on uniprocessors only, and TreeRCU, a deeply complex implementation
- * best suited for the largest NUMA boxes on Earth.
- *
- * Algorithm: jRCU is frame based.  That is, it periodically wakes up and
- * either advances jRCU state or it NOPs.  For state to advance, every CPU
- * must have at least one period, however small, where its preempt_count()
- * is zero, since the last time jRCU state advanced.
- *
- * 'Advancing state' simply means moving the functions queued up by
- * call_rcu() along a FIFO.  Those that drop off the end of the FIFO are
- * invoked before being discarded.  jRCU advances batches of functions
- * through the FIFO rather than individual functions; when a function is
- * queued, call_rcu() puts it into the batch that is at the head of the FIFO.
- *
- * jRCU assumes that the frames are large enough that architecture barrier
- * operations performed in one frame have fully completed by the start of
- * the next.  This period is typically in the tens of microseconds, so
- * it may not be wise to run jRCU at a frame rate less than 100 usecs.
+ * See Documentation/RCU/jrcu.txt for theory of operation and design details.
  *
  * Author: Joe Korty <joe.korty@ccur.com>
  *
@@ -35,7 +9,7 @@
  * the thought that there could could be something similiarly simple for SMP.
  * The rcu_list chain operators are from Jim Houston's Alternative RCU.
  *
- * Copyright Concurrent Computer Corporation, 2011
+ * Copyright Concurrent Computer Corporation, 2011-2012.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -59,6 +33,7 @@
 
 #include <linux/bug.h>
 #include <linux/smp.h>
+#include <linux/slab.h>
 #include <linux/ctype.h>
 #include <linux/sched.h>
 #include <linux/types.h>
@@ -135,6 +110,7 @@ struct rcu_data {
        u8 wait;                /* goes false when this cpu consents to
                                 * the retirement of the current batch */
        struct rcu_list cblist[2]; /* current & previous callback lists */
+		raw_spinlock_t lock;	/* protects the above callback lists */
        s64 nqueued;            /* #callbacks queued (stats-n-debug) */
 } ____cacheline_aligned_in_smp;
 
@@ -199,13 +175,8 @@ static inline int rcu_cpu(void)
  */
 static inline void rcu_eob(int cpu)
 {
-       struct rcu_data *rd = &rcu_data[cpu];
-       if (unlikely(rd->wait)) {
-               rd->wait = 0;
-#ifndef CONFIG_JRCU_LAZY
-               smp_mb();
-#endif
-       }
+	struct rcu_data *rd = &rcu_data[cpu];
+	xchg(&rd->wait, 0);
 }
 
 void jrcu_read_unlock(void)
@@ -224,11 +195,9 @@ EXPORT_SYMBOL_GPL(rcu_note_context_switch);
 
 void rcu_note_might_resched(void)
 {
-       unsigned long flags;
-
-       raw_local_irq_save(flags);
+		preempt_disable();
        rcu_eob(rcu_cpu());
-       raw_local_irq_restore(flags);
+		preempt_enable();
 }
 EXPORT_SYMBOL(rcu_note_might_resched);
 
@@ -276,9 +245,9 @@ void call_rcu_sched(struct rcu_head *cb, void (*func)(struct rcu_head *rcu))
        cb->next = NULL;
 
        raw_local_irq_save(flags);
-       smp_mb();
 
        rd = &rcu_data[rcu_cpu()];
+	raw_spin_lock(&rd->lock);
        which = ACCESS_ONCE(rcu_which);
        cblist = &rd->cblist[which];
 
@@ -286,7 +255,7 @@ void call_rcu_sched(struct rcu_head *cb, void (*func)(struct rcu_head *rcu))
         * cannot be invoked under NMI. */
        rcu_list_add(cblist, cb);
        rd->nqueued++;
-       smp_mb();
+	raw_spin_unlock(&rd->lock);
        raw_local_irq_restore(flags);
 }
 EXPORT_SYMBOL_GPL(call_rcu_sched);
@@ -392,17 +361,18 @@ static void __rcu_delimit_batches(struct rcu_list *pending)
        for_each_present_cpu(cpu) {
                rd = &rcu_data[cpu];
                plist = &rd->cblist[prev];
+		raw_spin_lock(&rd->lock);
                /* Chain previous batch of callbacks, if any, to the pending list */
                if (plist->head) {
                        rcu_list_join(pending, plist);
                        rcu_list_init(plist);
                }
+		raw_spin_unlock(&rd->lock);
                if (cpu_online(cpu)) /* wins race with offlining every time */
                        rd->wait = preempt_count_cpu(cpu) > idle_cpu(cpu);
                else
                        rd->wait = 0;
        }
-       smp_mb(); /* just paranoia, the below xchg should do this on all archs */
 
        /*
         * Swap current and previous lists.  The other cpus must not
@@ -420,20 +390,19 @@ static void __rcu_delimit_batches(struct rcu_list *pending)
 
 static void rcu_delimit_batches(void)
 {
-       unsigned long flags;
-       struct rcu_list pending;
+	unsigned long flags;
+	struct rcu_list pending;
 
-       rcu_list_init(&pending);
-       rcu_stats.npasses++;
+	raw_local_irq_save(flags);
 
-       raw_local_irq_save(flags);
-       smp_mb();
-       __rcu_delimit_batches(&pending);
-       smp_mb();
-       raw_local_irq_restore(flags);
+	rcu_list_init(&pending);
+	rcu_stats.npasses++;
 
-       if (pending.head)
-               rcu_invoke_callbacks(&pending);
+	__rcu_delimit_batches(&pending);
+	raw_local_irq_restore(flags);
+
+	if (pending.head)
+		rcu_invoke_callbacks(&pending);
 }
 
 /* ------------------ interrupt driver section ------------------ */
@@ -500,6 +469,10 @@ void __init rcu_scheduler_starting(void)
 
 void __init int rcu_start_callback_processing(void)
 {
+		int cpu;
+		for_each_possible_cpu(cpu)
+		raw_spin_lock_init(&rcu_data[cpu].lock);
+
        rcu_timer_start();
        rcu_scheduler_active = 1;
 
@@ -570,6 +543,10 @@ static int jrcud_func(void *arg)
 static __init int rcu_start_callback_processing(void)
 {
        struct task_struct *p;
+
+		int cpu;
+		for_each_possible_cpu(cpu)
+		raw_spin_lock_init(&rcu_data[cpu].lock);
 
        p = kthread_run(jrcud_func, NULL, "jrcud");
        if (IS_ERR(p)) {
