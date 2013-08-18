@@ -22,14 +22,14 @@
 
 /* cap voltages */
 #define HUNDSBUAH_TF700T_CPU_VOLTAGE_CAP         (1387)   /* mV */
-#define HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP        (1450)   /* mV */
+#define HUNDSBUAH_TF700T_CORE_VOLTAGE_CAP        (1425)   /* mV */
 
 /* max and min voltages */
 #define HUNDSBUAH_TF700T_MIN_CPU_VOLTAGE         (600)    /* mV */
 #define HUNDSBUAH_TF700T_MAX_CPU_VOLTAGE         (1387)   /* mV */
 
 #define HUNDSBUAH_TF700T_MIN_CORE_VOLTAGE        (850)    /* mV */
-#define HUNDSBUAH_TF700T_MAX_CORE_VOLTAGE        (1450)   /* mV */
+#define HUNDSBUAH_TF700T_MAX_CORE_VOLTAGE        (1425)   /* mV */
 
 
 /*****************************/

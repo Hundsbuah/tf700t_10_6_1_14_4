@@ -44,7 +44,7 @@ static int cpu_millivolts_aged[MAX_DVFS_FREQS] = { 0 };
 static unsigned int cpu_cold_offs_mhz[MAX_DVFS_FREQS] = { 0 };
 static struct dvfs cpu_dvfs_table[1] = { 0 };
 static struct dvfs cpu_0_dvfs_table[1] = { 0 };
-int core_millivolts[] = { 950,   1000,   1050,   1100,   1150,    1200,    1250,   1300, 1350,   1400,   1450 };
+int core_millivolts[] = { 950, 1000, 1050,   1100, 1150, 1200, 1250, 1300, 1350, 1387, 1425 };
 
 #define KHZ 1000
 #define MHZ 1000000
@@ -144,7 +144,7 @@ static struct dvfs_relationship tegra3_dvfs_relationships[] = {
 
 static struct dvfs core_dvfs_table[] = {
    /* soc_id2 == TF201 && TF700T */
-	/* Core voltages (mV):		  	      950,     1000,     1050,     1100,     1150,        1200,        1250,     1300,     1350,     1400,     1450 } */
+	/* Core voltages (mV):		  	      950,     1000,     1050,     1100,     1150,        1200,        1250,     1300,     1350,     1387,     1425 } */
 	CORE_DVFS("cpu_lp",     2, 1, KHZ, 204000,   295000,   370000,   428000,   475000,      513000,      579000,   620000,   620000,   620000,   620000),
 	CORE_DVFS("emc",        2, 1, KHZ, 102000,   450000,   450000,   450000,   450000,      667000,      667000,   800000,   900000,   900000,   900000),
 	CORE_DVFS("sbus",       2, 1, KHZ, 102000,   205000,   205000,   227000,   227000,      267000,      334000,   334000,   334000,   334000,   334000),
