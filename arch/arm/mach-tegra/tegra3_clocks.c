@@ -4844,23 +4844,21 @@ static struct cpufreq_frequency_table freq_table_300MHz[] = {
 };
 
 static struct cpufreq_frequency_table freq_table_1p75GHz[] = {
-	{ 0,   51000 },
-	{ 1,  102000 },
-	{ 2,  204000 },
-	{ 3,  370000 },
-	{ 4,  475000 },
-	{ 5,  620000 },
-	{ 6,  760000 },
-	{ 7,  910000 },
-	{ 8, 1000000 },
-	{ 9, 1150000 },
-	{10, 1300000 },
-	{11, 1400000 },
-	{12, 1500000 },
-	{13, 1600000 },
-	{14, 1700000 },
-    {15, 1750000 },
-	{16, CPUFREQ_TABLE_END },
+	{ 0,  204000 },
+	{ 1,  370000 },
+	{ 2,  475000 },
+	{ 3,  620000 },
+	{ 4,  760000 },
+	{ 5,  910000 },
+	{ 6, 1000000 },
+	{ 7, 1150000 },
+	{ 8, 1300000 },
+	{ 9, 1400000 },
+	{10, 1500000 },
+	{11, 1600000 },
+	{12, 1700000 },
+    {13, 1750000 },
+	{14, CPUFREQ_TABLE_END },
 };
 
 static struct cpufreq_frequency_table freq_table_1p85GHz[] = {
@@ -4922,7 +4920,7 @@ static struct cpufreq_frequency_table freq_table_1p9GHz[] = {
 
 static struct tegra_cpufreq_table_data cpufreq_tables[] = {
 	{ freq_table_300MHz,  0,  1 },  /* fallabck */
-	{ freq_table_1p75GHz, 0, 15 }, /* tf201 */
+	{ freq_table_1p75GHz, 0, 13 }, /* tf201 */
 	{ freq_table_1p85GHz, 0, 23 }, /* tf700t cpu_proc_id 3 */
 	{ freq_table_1p9GHz,  0, 24 }, /* tf700t cpu_proc_id 4*/
 };
