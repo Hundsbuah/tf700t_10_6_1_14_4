@@ -20,6 +20,7 @@
 #include <asm/uaccess.h>
 #include <linux/power_supply.h>
 #include <../gpio-names.h>
+#include <linux/statfs.h>
 #include "asuspec.h"
 #include <mach/board-cardhu-misc.h>
 
@@ -63,7 +64,13 @@ static ssize_t asuspec_enter_factory_mode_show(struct device *class,
 		struct device_attribute *attr,char *buf);
 static ssize_t asuspec_enter_normal_mode_show(struct device *class,
 		struct device_attribute *attr,char *buf);
-static ssize_t asuspec_pad_base_sync_show(struct device *class,
+static ssize_t asuspec_switch_hdmi_show(struct device *class,
+		struct device_attribute *attr,char *buf);
+static ssize_t asuspec_win_shutdown_show(struct device *class,
+		struct device_attribute *attr,char *buf);
+static ssize_t asuspec_cmd_data_store(struct device *class,
+		struct device_attribute *attr,const char *buf, size_t count);
+static ssize_t asuspec_return_data_show(struct device *class,
 		struct device_attribute *attr,char *buf);
 static ssize_t asuspec_switch_name(struct switch_dev *sdev, char *buf);
 static ssize_t asuspec_switch_state(struct switch_dev *sdev, char *buf);
@@ -74,7 +81,10 @@ static int asuspec_resume(struct i2c_client *client);
 static int asuspec_open(struct inode *inode, struct file *flip);
 static int asuspec_release(struct inode *inode, struct file *flip);
 static long asuspec_ioctl(struct file *flip, unsigned int cmd, unsigned long arg);
+static void asuspec_switch_apower_state(int state);
 static void asuspec_switch_hdmi(void);
+static void asuspec_win_shutdown(void);
+static void asuspec_storage_info_update(void);
 static void asuspec_enter_factory_mode(void);
 static void asuspec_enter_normal_mode(void);
 static ssize_t ec_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos);
@@ -97,6 +107,7 @@ static char ec_to_host_buffer[EC_BUFF_LEN];
 static int h2ec_count;
 static int buff_in_ptr;	  // point to the next free place
 static int buff_out_ptr;	  // points to the first data
+int reg_addr = -1;
 
 struct i2c_client dockram_client;
 static struct class *asuspec_class;
@@ -151,7 +162,10 @@ static DEVICE_ATTR(ec_led, S_IWUSR | S_IRUGO, asuspec_led_show,NULL);
 static DEVICE_ATTR(ec_charging_led, S_IWUSR | S_IRUGO, NULL, asuspec_charging_led_store);
 static DEVICE_ATTR(ec_factory_mode, S_IWUSR | S_IRUGO, asuspec_enter_factory_mode_show,NULL);
 static DEVICE_ATTR(ec_normal_mode, S_IWUSR | S_IRUGO, asuspec_enter_normal_mode_show,NULL);
-static DEVICE_ATTR(ec_pad_base_sync_state, S_IWUSR | S_IRUGO, asuspec_pad_base_sync_show,NULL);
+static DEVICE_ATTR(ec_switch_hdmi, S_IWUSR | S_IRUGO, asuspec_switch_hdmi_show,NULL);
+static DEVICE_ATTR(ec_win_shutdown, S_IWUSR | S_IRUGO, asuspec_win_shutdown_show,NULL);
+static DEVICE_ATTR(ec_cmd_data_send, S_IWUSR | S_IRUGO, NULL, asuspec_cmd_data_store);
+static DEVICE_ATTR(ec_data_read, S_IWUSR | S_IRUGO,  asuspec_return_data_show, NULL);
 
 static struct attribute *asuspec_smbus_attributes[] = {
 	&dev_attr_ec_status.attr,
@@ -164,7 +178,10 @@ static struct attribute *asuspec_smbus_attributes[] = {
 	&dev_attr_ec_charging_led.attr,
 	&dev_attr_ec_factory_mode.attr,
 	&dev_attr_ec_normal_mode.attr,
-	&dev_attr_ec_pad_base_sync_state.attr,
+	&dev_attr_ec_switch_hdmi.attr,
+	&dev_attr_ec_win_shutdown.attr,
+	&dev_attr_ec_cmd_data_send.attr,
+	&dev_attr_ec_data_read.attr,
 NULL
 };
 
@@ -318,6 +335,60 @@ static int asuspec_dockram_read_data(int cmd)
 	}
 
 	ret = i2c_smbus_read_i2c_block_data(&dockram_client, cmd, 32, ec_chip->i2c_dm_data);
+	if (ret < 0) {
+		ASUSPEC_ERR("Fail to read dockram data, status %d\n", ret);
+	} else {
+		ec_chip->i2c_err_count = 0;
+	}
+	return ret;
+}
+
+static int asuspec_dockram_write_storageinfo(int cmd, int length)
+{
+	int ret = 0;
+
+	if (ec_chip->ec_ram_init != ASUSPEC_MAGIC_NUM){
+		ASUSPEC_ERR("DockRam is not ready.\n");
+		return -1;
+	}
+
+	if (ec_chip->op_mode){
+		ASUSPEC_ERR("It's not allowed to access dockram under FW update mode.\n");
+		return -2;
+	}
+
+	if (ec_chip->i2c_err_count > ASUSPEC_I2C_ERR_TOLERANCE){
+		return -3;
+	}
+
+	ret = i2c_smbus_write_i2c_block_data(&dockram_client, cmd, length, ec_chip->i2c_dm_storage);
+	if (ret < 0) {
+		ASUSPEC_ERR("Fail to write dockram data, status %d\n", ret);
+	} else {
+		ec_chip->i2c_err_count = 0;
+	}
+	return ret;
+}
+
+static int asuspec_dockram_read_storageinfo(int cmd)
+{
+	int ret = 0;
+
+	if (ec_chip->ec_ram_init != ASUSPEC_MAGIC_NUM){
+		ASUSPEC_ERR("DockRam is not ready.\n");
+		return -1;
+	}
+
+	if (ec_chip->op_mode){
+		ASUSPEC_ERR("It's not allowed to access dockram under FW update mode.\n");
+		return -2;
+	}
+
+	if (ec_chip->i2c_err_count > ASUSPEC_I2C_ERR_TOLERANCE){
+		return -3;
+	}
+
+	ret = i2c_smbus_read_i2c_block_data(&dockram_client, cmd, 32, ec_chip->i2c_dm_storage);
 	if (ret < 0) {
 		ASUSPEC_ERR("Fail to read dockram data, status %d\n", ret);
 	} else {
@@ -594,8 +665,13 @@ static void asuspec_smi(void){
 		ASUSPEC_NOTICE("ASUSPEC_SMI_WAKE\n");
 	} else if (ec_chip->i2c_data[2] == APOWER_SMI_S5){
 		ASUSPEC_NOTICE("APOWER_POWEROFF\n");
-		ec_chip->apower_state = APOWER_POWEROFF;
-		switch_set_state(&ec_chip->apower_sdev, ec_chip->apower_state);
+		asuspec_switch_apower_state(APOWER_POWEROFF);
+	} else if (ec_chip->i2c_data[2] == APOWER_SMI_NOTIFY_SHUTDOWN){
+		ASUSPEC_NOTICE("APOWER_NOTIFY_SHUTDOWN\n");
+		asuspec_switch_apower_state(APOWER_NOTIFY_SHUTDOWN);
+	} else if (ec_chip->i2c_data[2] == APOWER_SMI_RESUME){
+		ASUSPEC_NOTICE("APOWER_SMI_RESUME\n");
+		asuspec_switch_apower_state(APOWER_RESUME);
 	}
 }
 
@@ -611,6 +687,9 @@ static void asuspec_enter_s3_work_function(struct work_struct *dat)
 		mutex_unlock(&ec_chip->state_change_lock);
 		return ;
 	}
+
+	if (ec_chip->pad_pid == TEGRA3_PROJECT_P1801)
+		asuspec_storage_info_update();
 
 	ec_chip->ec_in_s3 = 1;
 	for ( i = 0; i < 3; i++ ){
@@ -709,6 +788,7 @@ static int __devinit asuspec_probe(struct i2c_client *client,
 		goto exit;
 	}
 
+	ec_chip->pad_pid = tegra3_get_project_id();
 	i2c_set_clientdata(client, ec_chip);
 	ec_chip->client = client;
 	ec_chip->client->driver = &asuspec_driver;
@@ -727,6 +807,8 @@ static int __devinit asuspec_probe(struct i2c_client *client,
 	ec_chip->status = 0;
 	ec_chip->ec_in_s3 = 0;
 	ec_chip->apwake_disabled = 0;
+	ec_chip->storage_total = 0;
+	ec_chip->storage_avail = 0;
 	asuspec_dockram_init(client);
 	cdev_add(asuspec_cdev,asuspec_dev,1) ;
 
@@ -917,20 +999,104 @@ static ssize_t asuspec_enter_normal_mode_show(struct device *class,struct device
 	return sprintf(buf, "Entering normal mode\n");
 }
 
-static ssize_t asuspec_pad_base_sync_show(struct device *class,struct device_attribute *attr,char *buf)
+static ssize_t asuspec_switch_hdmi_show(struct device *class,struct device_attribute *attr,char *buf)
 {
-	int ret_val = 0;
+	asuspec_switch_hdmi();
+	return sprintf(buf, "Switch hdmi\n");
+}
 
-	ret_val = asuspec_dockram_read_data(0x0A);
-	if (ret_val < 0)
-		return sprintf(buf, "fail to get pad and base sync state\n");
-	else{
-		if(ec_chip->i2c_dm_data[8] & 0x02)
-			sprintf(buf, "1\n");
-		else
-			sprintf(buf, "0\n");
-		return strlen(buf);
+static ssize_t asuspec_win_shutdown_show(struct device *class,struct device_attribute *attr,char *buf)
+{
+	asuspec_win_shutdown();
+	return sprintf(buf, "Win shutdown\n");
+}
+static ssize_t asuspec_cmd_data_store(struct device *class,struct device_attribute *attr,const char *buf, size_t count)
+{
+	int buf_len = strlen(buf);
+	int data_len = (buf_len -1)/2;
+	char chr[2], data_num[data_len];
+	int i=0, j=0, idx=0, ret, data_cnt, ret_val;
+	chr[2] = '\0';
+	u8 cmd;
+
+	if (ec_chip->ec_in_s3){
+		asuspec_send_ec_req();
+		msleep(200);
 	}
+
+	memset(&ec_chip->i2c_dm_data, 0, 32);
+
+	printk("buf_len=%d, data_len=%d \n",buf_len, data_len);
+
+	if(!(buf_len&0x01) || !data_len){
+		return -1;
+	} else if(buf_len==3){
+		reg_addr = (u8) simple_strtoul (buf,NULL,16);
+		return EAGAIN;
+	}
+	for(i=0;i<buf_len-1;i++){
+		chr[j] = *(buf+i);
+		if(j==1){
+			if (i == 1) {
+				cmd = (u8) simple_strtoul (chr,NULL,16);
+			} else
+				data_num[idx++] = (u8) simple_strtoul (chr,NULL,16);
+		}
+		j++;
+		if(j>1){
+			j=0;
+		}
+	}
+	data_num[idx] = '\0';
+	data_cnt = data_len - 1;
+
+	if(data_cnt > 32) {
+		printk("Input data count is over length\n");
+		return -1;
+	}
+
+	memcpy(&ec_chip->i2c_dm_data[1], data_num, data_cnt);
+	ec_chip->i2c_dm_data[0] = data_len - 1;
+
+	for(i=0; i<data_len; i++){
+		if (i ==0) printk("I2c cmd=0x%x\n", cmd);
+		printk("I2c_dm_data[%d]=0x%x\n",i, ec_chip->i2c_dm_data[i]);
+	}
+	ret = asuspec_dockram_write_data(cmd, data_len);
+	if(ret <0)
+		ASUSPEC_NOTICE("Fail to write data\n");
+	return count;
+}
+
+static ssize_t asuspec_return_data_show(struct device *class,struct device_attribute *attr,char *buf)
+{
+	int i, ret_val;
+	char temp_buf[64];
+
+	if (reg_addr != -1) {
+
+		if (ec_chip->ec_in_s3){
+			asuspec_send_ec_req();
+			msleep(200);
+		}
+
+		printk("Smbus read EC command=0x%02x\n", reg_addr);
+		ret_val = asuspec_dockram_read_data(reg_addr);
+		reg_addr = -1;
+
+		if (ret_val < 0)
+			return sprintf(buf, "Fail to read ec data\n");
+		else{
+			if (ec_chip->i2c_dm_data[0]> 32)
+				return sprintf(buf, "EC return data length error\n");
+			for (i = 1; i <= ec_chip->i2c_dm_data[0] ; i++){
+				sprintf(temp_buf, "byte[%d] = 0x%x\n", i, ec_chip->i2c_dm_data[i]);
+				strcat(buf, temp_buf);
+			}
+			return strlen(buf);
+		}
+	}
+	return 0;
 }
 
 static ssize_t asuspec_switch_name(struct switch_dev *sdev, char *buf)
@@ -1054,10 +1220,56 @@ static long asuspec_ioctl(struct file *flip,
 			ASUSPEC_NOTICE("ASUSPEC_SWITCH_HDMI\n", arg);
 			asuspec_switch_hdmi();
 			break;
+		case ASUSPEC_WIN_SHUTDOWN:
+			ASUSPEC_NOTICE("ASUSPEC_WIN_SHUTDOWN\n", arg);
+			asuspec_win_shutdown();
+			break;
         default: /* redundant, as cmd was checked against MAXNR */
             return -ENOTTY;
 	}
     return 0;
+}
+
+static void asuspec_switch_apower_state(int state){
+	ec_chip->apower_state = state;
+	switch_set_state(&ec_chip->apower_sdev, ec_chip->apower_state);
+	ec_chip->apower_state = APOWER_IDLE;
+	switch_set_state(&ec_chip->apower_sdev, ec_chip->apower_state);
+}
+
+static void asuspec_win_shutdown(void){
+	int ret_val = 0;
+	int i = 0;
+
+	if (ec_chip->ec_in_s3){
+		asuspec_send_ec_req();
+		msleep(200);
+	}
+
+	for ( i = 0; i < 3; i++ ){
+		ret_val = asuspec_dockram_read_data(0x0A);
+		if (ret_val < 0){
+			ASUSPEC_ERR("fail to get control flag\n");
+			msleep(100);
+		}
+		else
+			break;
+	}
+
+	ec_chip->i2c_dm_data[0] = 8;
+	ec_chip->i2c_dm_data[8] = ec_chip->i2c_dm_data[8] | 0x40;
+
+	for ( i = 0; i < 3; i++ ){
+		ret_val = asuspec_dockram_write_data(0x0A,9);
+		if (ret_val < 0){
+			ASUSPEC_ERR("Win shutdown command fail\n");
+			msleep(100);
+		}
+		else {
+			ASUSPEC_NOTICE("Win shutdown\n");
+			break;
+		}
+	}
 }
 
 static void asuspec_switch_hdmi(void){
@@ -1094,6 +1306,65 @@ static void asuspec_switch_hdmi(void){
 		}
 	}
 
+}
+
+static void asuspec_storage_info_update(void){
+	int ret_val = 0;
+	int i = 0;
+	struct kstatfs st_fs;
+	unsigned long long block_size;
+	unsigned long long f_blocks;
+	unsigned long long f_bavail;
+	unsigned long long mb;
+
+	ret_val = user_statfs("/data", &st_fs);
+	if (ret_val < 0){
+		ASUSPEC_ERR("fail to get data partition size\n");
+		ec_chip->storage_total = 0;
+		ec_chip->storage_avail = 0;
+	} else {
+		block_size = st_fs.f_bsize;
+		f_blocks = st_fs.f_blocks;
+		f_bavail = st_fs.f_bavail;
+		mb = MB;
+		ec_chip->storage_total = block_size * f_blocks / mb;
+		ec_chip->storage_avail = block_size * f_bavail / mb;
+		ASUSPEC_NOTICE("Storage total size = %ld, available size = %ld\n", ec_chip->storage_total, ec_chip->storage_avail);
+	}
+
+	if (ec_chip->ec_in_s3){
+		asuspec_send_ec_req();
+		msleep(200);
+	}
+
+	for ( i = 0; i < 3; i++ ){
+		ret_val = asuspec_dockram_read_storageinfo(0x28);
+		if (ret_val < 0){
+			ASUSPEC_ERR("fail to get PadInfo\n");
+			msleep(100);
+		}
+		else
+			break;
+	}
+
+	ec_chip->i2c_dm_storage[0] = 8;
+	ec_chip->i2c_dm_storage[1] = ec_chip->storage_total & 0xFF;
+	ec_chip->i2c_dm_storage[2] = (ec_chip->storage_total >> 8) & 0xFF;
+	ec_chip->i2c_dm_storage[3] = ec_chip->storage_avail & 0xFF;;
+	ec_chip->i2c_dm_storage[4] = (ec_chip->storage_avail >> 8) & 0xFF;;
+
+	for ( i = 0; i < 3; i++ ){
+		ret_val = asuspec_dockram_write_storageinfo(0x28,9);
+		if (ret_val < 0){
+			ASUSPEC_ERR("fail to write PadInfo\n");
+			msleep(100);
+		}
+		else {
+			ASUSPEC_NOTICE("Write PadInof Total[H][L]: 0x%x, 0x%x\n", ec_chip->i2c_dm_storage[2], ec_chip->i2c_dm_storage[1]);
+			ASUSPEC_NOTICE("Write PadInof Avail[H][L]: 0x%x, 0x%x\n", ec_chip->i2c_dm_storage[4], ec_chip->i2c_dm_storage[3]);
+			break;
+		}
+	}
 }
 
 static void asuspec_enter_factory_mode(void){
