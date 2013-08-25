@@ -128,4 +128,4 @@ obj-$(CONFIG_PSTORE)		+= pstore/
 obj-$(CONFIG_YAFFS_FS)		+= yaffs2/
 
 # samsungs exfat dirver
-obj-$(CONFIG_EXFAT_NOFUSE)      += exfat_nofuse/
+obj-$(CONFIG_EXFAT_FS)      += exfat/

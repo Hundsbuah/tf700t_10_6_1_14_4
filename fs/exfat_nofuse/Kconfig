@@ -1,5 +1,0 @@
-config EXFAT_NOFUSE
-        tristate "samsungs exfat driver"
-	help
-	  Enables samsungs exfat driver
-	  https://github.com/rxrz/exfat-nofuse

@@ -308,6 +308,6 @@ config RESTRICT_ROOTFS_SLAVE
  
 # samsungs exfat driver
 
-source "fs/exfat_nofuse/Kconfig"
+source "fs/exfat/Kconfig"
 
 endmenu
