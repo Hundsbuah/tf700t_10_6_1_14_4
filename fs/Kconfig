@@ -306,5 +306,8 @@ config RESTRICT_ROOTFS_SLAVE
     Android init.rc.  If this volume is unavailable, then we fall back to the
     previous behavior of marking the entire filesystem hierarchy as slave.
  
+# samsungs exfat driver
+
+source "fs/exfat_nofuse/Kconfig"
 
 endmenu

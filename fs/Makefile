@@ -126,3 +126,6 @@ obj-$(CONFIG_PSTORE)		+= pstore/
 
 # Patched by YAFFS
 obj-$(CONFIG_YAFFS_FS)		+= yaffs2/
+
+# samsungs exfat dirver
+obj-$(CONFIG_EXFAT_NOFUSE)      += exfat_nofuse/

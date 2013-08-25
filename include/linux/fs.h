@@ -1763,6 +1763,19 @@ static inline void inode_inc_link_count(struct inode *inode)
 }
 
 /**
+* set_nlink - directly set an inode's link count
+* @inode: inode
+* @nlink: new nlink (should be non-zero)
+*
+* This is a low-level filesystem helper to replace any
+* direct filesystem manipulation of i_nlink.
+*/
+static inline void set_nlink(struct inode *inode, unsigned int nlink)
+{
+	inode->i_nlink = nlink;
+}
+
+/**
  * drop_nlink - directly drop an inode's link count
  * @inode: inode
  *
