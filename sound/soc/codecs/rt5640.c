@@ -108,6 +108,8 @@ struct rt5640_init_reg {
 	u16 val;
 };
 
+static struct timer_list mclk_check_timer;
+struct work_struct  mclk_check_work;
 static struct rt5640_init_reg init_list[] = {
 	{RT5640_DUMMY1		, 0x3701},//fa[12:13] = 1'b; fa[8~10]=1; fa[0]=1
 	{RT5640_ADDA_CLK1	, 0x1114},//73[2] = 1'b
@@ -296,6 +298,7 @@ enum
 	TREBLE,
 	BASS,
 	TF500T,
+	HPF,
 };
 
 typedef struct  _HW_EQ_PRESET
@@ -319,6 +322,7 @@ static HW_EQ_PRESET HwEq_Preset[]={
 	{TREBLE,{0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x188D,0x1699,0x0000,0x0000,0x0000},0x0020},
 	{BASS  ,{0x1A43,0x0C00,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000},0x0001},
 	{TF500T  ,{0x1C10,0x0000,0xC210,0x1DF8,0x1D18,0xC21D,0x1E5E,0xF805,0xCB34,0x188D,0x0699,0xEE23,0x0EAD,0xF5AE,0x0D41,0x1D18,0x1FA5,0x005A,0x1FA5},0x007E},
+	{HPF,{0x1F95,0x0000,0xC883,0x1C10,0x0000,0xD588,0x1C10,0x0000,0xE904,0x1C10,0x0000,0xE904,0x1C10,0x0000,0x0436,0x0000,0x1F8E,0x0070,0x1F8F},0x0040},
 };
 
 //*************************************************************************************************
@@ -517,6 +521,65 @@ err:
 	return ret;
 }
 
+bool checkMclkError(struct snd_soc_codec *codec)
+{
+        int CodecValue1,CodecValue2;
+        int valB8, val61;
+
+    /* backup MX61 value */
+    val61 = snd_soc_read(codec,RT5640_PWR_DIG1);
+    /* enable ANC related power */
+    snd_soc_update_bits(codec,RT5640_PWR_DIG1,0x9806, 0x9806);
+    /* backup MXb8 value */
+    valB8 = snd_soc_read(codec,RT5640_ANC_CTRL1);
+    snd_soc_write(codec,RT5640_ANC_CTRL1,0x434b);
+
+    CodecValue1 = rt5640_index_read(codec,0x2c);
+    mdelay(1);
+    CodecValue2 = rt5640_index_read(codec,0x2c);
+
+    /* restore mxb8 and mx61 value*/
+    snd_soc_write(codec,RT5640_ANC_CTRL1,valB8);
+    snd_soc_write(codec,RT5640_PWR_DIG1,val61);
+
+    if(CodecValue1==CodecValue2)
+        return true;
+    else
+        return false;
+
+}
+
+static void mclk_check_work_handler(struct work_struct *work)
+{
+    struct snd_soc_codec *codec = rt5640_audio_codec;
+
+    if (checkMclkError(codec)) {
+        printk("\nNO MCLK\n");
+        snd_soc_update_bits(codec, RT5640_SPK_VOL,
+            RT5640_L_MUTE | RT5640_R_MUTE,
+            RT5640_L_MUTE | RT5640_R_MUTE);
+        snd_soc_update_bits(codec, RT5640_PWR_DIG1,
+            RT5640_PWR_CLS_D, 0);
+    } else {
+        printk("\nMCLK found\n");
+        snd_soc_update_bits(codec, RT5640_PWR_DIG1,
+            RT5640_PWR_CLS_D, RT5640_PWR_CLS_D);
+        snd_soc_update_bits(codec, RT5640_SPK_VOL,
+            RT5640_L_MUTE | RT5640_R_MUTE, 0);
+    }
+}
+
+void mclk_check_timer_callback(unsigned long data )
+{
+    int ret = 0;
+
+    schedule_work(&mclk_check_work);
+
+    ret = mod_timer(&mclk_check_timer, jiffies + msecs_to_jiffies(2000));
+    if (ret)
+        printk("Error in mod_timer\n");
+}
+
 //*************************************************************************************************
 //for EQ function
 //*************************************************************************************************
@@ -556,6 +619,9 @@ static void rt5640_update_eqmode(struct snd_soc_codec *codec, int mode)
 				rt5640_index_write(codec,RT5640_EQ_PRE_VOL,0x02D6);
 				rt5640_index_write(codec,RT5640_EQ_PST_VOL,0x0800);
 				break;
+            case TEGRA3_PROJECT_ME301T:
+                rt5640_index_write(codec,RT5640_EQ_PRE_VOL,0x0800);
+                rt5640_index_write(codec,RT5640_EQ_PST_VOL,0x0800);
 			case TEGRA3_PROJECT_P1801:
 				break;
 			default:
@@ -1708,17 +1774,18 @@ static int rt5640_spk_event(struct snd_soc_dapm_widget *w,
 				snd_soc_write(codec, RT5640_DRC_AGC_3,0x0000);
 				rt5640_update_eqmode(codec,TF500T);
 				break;
-			case TEGRA3_PROJECT_P1801:
-				break;
 			case TEGRA3_PROJECT_ME301T:
 				/* set speaker vol +1.5dB */
 				snd_soc_update_bits(codec, RT5640_SPK_VOL,
 					RT5640_L_VOL_MASK | RT5640_R_VOL_MASK,
-					0x0707);
+					0x0a0a);
+			case TEGRA3_PROJECT_P1801:
+				rt5640_update_eqmode(codec,HPF);
 				break;
 			default:
 				break;
 		}
+        mod_timer( &mclk_check_timer, jiffies);
 		snd_soc_update_bits(codec, RT5640_PWR_DIG1,
 			RT5640_PWR_CLS_D, RT5640_PWR_CLS_D);
 		rt5640_index_update_bits(codec,
@@ -1741,9 +1808,9 @@ static int rt5640_spk_event(struct snd_soc_dapm_widget *w,
 					snd_soc_write(codec, RT5640_DRC_AGC_2,0x0009);
 					snd_soc_write(codec, RT5640_DRC_AGC_3,0x3044);
 				}
-				rt5640_update_eqmode(codec,NORMAL);
-				break;
+			case TEGRA3_PROJECT_ME301T:
 			case TEGRA3_PROJECT_P1801:
+				rt5640_update_eqmode(codec,NORMAL);
 				break;
 			default:
 				break;
@@ -1756,6 +1823,7 @@ static int rt5640_spk_event(struct snd_soc_dapm_widget *w,
 			RT5640_CLSD_INT_REG1, 0xf000, 0x0000);
 		snd_soc_update_bits(codec, RT5640_PWR_DIG1,
 			RT5640_PWR_CLS_D, 0);
+        del_timer( &mclk_check_timer);
 		break;
 
 	default:
@@ -2979,14 +3047,15 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 		/*  Avoid detect headset as headphone when device is in suspend.
 		 *  Check if the detect process is working.
 		 */
-		if (isHpDetecting)
-			snd_soc_write(codec, RT5640_PWR_ANLG1, RT5640_PWR_LDO2);
-		else
-			snd_soc_write(codec, RT5640_PWR_ANLG1, 0x0000);
-		if (isHpDetecting)
+		if (isHpDetecting){
+			snd_soc_write(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_VREF2 | RT5640_PWR_MB | RT5640_PWR_LDO2);
 			snd_soc_write(codec, RT5640_PWR_ANLG2, RT5640_PWR_MB1);
-		else
+		}
+		else {
+			snd_soc_write(codec, RT5640_PWR_ANLG1, 0x0000);
 			snd_soc_write(codec, RT5640_PWR_ANLG2, 0x0000);
+		}
 
 		if (project_info == TEGRA3_PROJECT_ME301T && debugboard_alive){
 			snd_soc_update_bits(rt5640_audio_codec,
@@ -3692,7 +3761,9 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 #endif
 #endif
 	do_rt5640_dsp_set_mode(rt5640_audio_codec,RT5640_DSP_DIS);
-	return 0;
+    setup_timer( &mclk_check_timer, mclk_check_timer_callback, 0 );
+    INIT_WORK(&mclk_check_work, mclk_check_work_handler);
+    return 0;
 }
 
 static int rt5640_remove(struct snd_soc_codec *codec)

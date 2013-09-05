@@ -634,6 +634,10 @@ static int codec_micbias_power(int on)
 				printk("%s: No RT5642_codec - set micbias on fail\n", __func__);
 				return 0;
 			}
+			 /* Ensure the power is strong enough to drive MicBias2 */
+			snd_soc_update_bits(rt5640_audio_codec, RT5640_PWR_ANLG1,
+					     RT5640_PWR_MB | RT5640_PWR_VREF2,
+					     RT5640_PWR_MB | RT5640_PWR_VREF2);
 			snd_soc_update_bits(rt5640_audio_codec, RT5640_PWR_ANLG1, RT5640_PWR_LDO2, RT5640_PWR_LDO2); /* Enable LDO2 */
 			snd_soc_update_bits(rt5640_audio_codec, RT5640_PWR_ANLG2, RT5640_PWR_MB1, RT5640_PWR_MB1); /*Enable MicBias1 */
 		}
