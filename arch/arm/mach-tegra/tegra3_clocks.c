@@ -1043,12 +1043,13 @@ static int tegra3_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	{
 		if (p == c->parent)		/* already switched - exit*/
 			return 0;
-
+#if 0
 		if (rate > p->max_rate) {	/* over-clocking - no switch */
 			pr_warn("%s: No %s mode switch to %s at rate %lu\n",
 				 __func__, c->name, p->name, rate);
 			return -ECANCELED;
 		}
+#endif
 		flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
 		delay = 0;
 	}
@@ -4844,81 +4845,87 @@ static struct cpufreq_frequency_table freq_table_300MHz[] = {
 };
 
 static struct cpufreq_frequency_table freq_table_1p75GHz[] = {
-	{ 0,  204000 },
-	{ 1,  370000 },
-	{ 2,  475000 },
-	{ 3,  620000 },
-	{ 4,  760000 },
-	{ 5,  910000 },
-	{ 6, 1000000 },
-	{ 7, 1150000 },
-	{ 8, 1300000 },
-	{ 9, 1400000 },
-	{10, 1500000 },
-	{11, 1600000 },
-	{12, 1700000 },
-    {13, 1750000 },
-	{14, CPUFREQ_TABLE_END },
+	{ 0,   51000 },
+	{ 1,  102000 },
+	{ 2,  204000 },
+	{ 3,  370000 },
+	{ 4,  475000 },
+	{ 5,  620000 },
+	{ 6,  760000 },
+	{ 7,  910000 },
+	{ 8, 1000000 },
+	{ 9, 1150000 },
+	{10, 1300000 },
+	{11, 1400000 },
+	{12, 1500000 },
+	{13, 1600000 },
+	{14, 1700000 },
+    {15, 1750000 },
+	{16, CPUFREQ_TABLE_END },
 };
 
 static struct cpufreq_frequency_table freq_table_1p85GHz[] = {
-	{  0,  204000 },
-	{  1,  370000 },
-	{  2,  475000 },
-	{  3,  620000 },
-	{  4,  760000 },
-	{  5,  910000 },
-	{  6,  1000000 },
-	{  7,  1150000 },
-	{  8, 1230000 },
-	{  9, 1280000 },
-	{ 10, 1300000 },
-	{ 11, 1330000 },
-	{ 12, 1370000 },
-	{ 13, 1400000 },
-	{ 14, 1470000 },
-	{ 15, 1500000 },
-	{ 16, 1540000 },
-	{ 17, 1600000 },
-	{ 28, 1700000 },
-	{ 19, 1750000 },
-    { 20, 1800000 },
-    { 21, 1850000 },
-	{ 22, CPUFREQ_TABLE_END },
+	{ 0,   51000 },
+	{ 1,  102000 },
+	{ 2,  204000 },
+	{ 3,  370000 },
+	{ 4,  475000 },
+	{ 5,  620000 },
+	{ 6,  760000 },
+	{ 7,  910000 },
+	{ 8,  1000000 },
+	{ 9,  1150000 },
+	{ 10, 1230000 },
+	{ 11, 1280000 },
+	{ 12, 1300000 },
+	{ 13, 1330000 },
+	{ 14, 1370000 },
+	{ 15, 1400000 },
+	{ 16, 1470000 },
+	{ 17, 1500000 },
+	{ 18, 1540000 },
+	{ 19, 1600000 },
+	{ 20, 1700000 },
+	{ 21, 1750000 },
+    { 22, 1800000 },
+    { 23, 1850000 },
+	{ 24, CPUFREQ_TABLE_END },
 };
 
 static struct cpufreq_frequency_table freq_table_1p9GHz[] = {
-	{  0,  204000 },
-	{  1,  370000 },
-	{  2,  475000 },
-	{  3,  620000 },
-	{  4,  760000 },
-	{  5,  910000 },
-	{  6,  1000000 },
-	{  7,  1150000 },
-	{  8, 1230000 },
-	{  9, 1280000 },
-	{ 10, 1300000 },
-	{ 11, 1330000 },
-	{ 12, 1370000 },
-	{ 13, 1400000 },
-	{ 14, 1470000 },
-	{ 15, 1500000 },
-	{ 16, 1540000 },
-	{ 17, 1600000 },
-	{ 18, 1700000 },
-	{ 19, 1750000 },
-    { 20, 1800000 },
-    { 21, 1850000 },
-    { 22, 1900000 },
-	{ 23, CPUFREQ_TABLE_END },
+	{ 0,   51000 },
+	{ 1,  102000 },
+	{ 2,  204000 },
+	{ 3,  370000 },
+	{ 4,  475000 },
+	{ 5,  620000 },
+	{ 6,  760000 },
+	{ 7,  910000 },
+	{ 8,  1000000 },
+	{ 9,  1150000 },
+	{ 10, 1230000 },
+	{ 11, 1280000 },
+	{ 12, 1300000 },
+	{ 13, 1330000 },
+	{ 14, 1370000 },
+	{ 15, 1400000 },
+	{ 16, 1470000 },
+	{ 17, 1500000 },
+	{ 18, 1540000 },
+	{ 19, 1600000 },
+	{ 20, 1700000 },
+	{ 21, 1750000 },
+    { 22, 1800000 },
+    { 23, 1850000 },
+    { 24, 1900000 },
+	{ 25, CPUFREQ_TABLE_END },
 };
 
 static struct tegra_cpufreq_table_data cpufreq_tables[] = {
 	{ freq_table_300MHz,  0,  1 },  /* fallabck */
-	{ freq_table_1p75GHz, 0,  9 }, /* tf201 */
-	{ freq_table_1p85GHz, 0, 15 }, /* tf700t cpu_proc_id 3 */
-	{ freq_table_1p9GHz,  0, 15 }, /* tf700t cpu_proc_id 4*/
+	{ freq_table_1p75GHz, 2, 15 }, /* tf201 */
+	{ freq_table_1p85GHz, 2, 23 }, /* tf700t cpu_proc_id 3 */
+	{ freq_table_1p9GHz,  2, 24 }, /* tf700t cpu_proc_id 4*/
 };
 
 static int clip_cpu_rate_limits(
@@ -4955,8 +4962,8 @@ static int clip_cpu_rate_limits(
 		return ret;
 	}
 	cpu_clk_lp->max_rate = freq_table[idx].frequency * 1000;
-	cpu_clk_g->min_rate = freq_table[idx].frequency * 1000;
-	data->suspend_index = 0;
+	cpu_clk_g->min_rate = freq_table[idx-1].frequency * 1000;
+	data->suspend_index = idx;
 	return 0;
 }
 
