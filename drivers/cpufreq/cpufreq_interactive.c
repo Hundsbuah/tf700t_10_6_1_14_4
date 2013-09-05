@@ -38,7 +38,7 @@ extern void set_up2g0_delay(int delay);
 static ktime_t freq_change_time_input;
 //static DEFINE_MUTEX(dbs_mutex);
 
-#define DEFAULT_MIN_SAMPLE_INPUT_TIME 1500000
+#define DEFAULT_MIN_SAMPLE_INPUT_TIME 500000
 static unsigned long min_sample_input_time;
 
 
@@ -76,23 +76,23 @@ static struct kobject *interactive_kobj;
 static unsigned int active_count;
 
 /* Go to max speed when CPU load at or above this value. */
-#define DEFAULT_GO_MAXSPEED_LOAD 85
+#define DEFAULT_GO_MAXSPEED_LOAD 90
 static unsigned long go_maxspeed_load;
 
 /* Base of exponential raise to max speed; if 0 - jump to maximum */
-static unsigned long boost_factor;
+static unsigned long boost_factor = 2;
 
 /* Max frequency boost in Hz; if 0 - no max is enforced */
-static unsigned long max_boost;
+static unsigned long max_boost = 175000;
 
 /* Consider IO as busy */
-static unsigned long io_is_busy;
+static unsigned long io_is_busy = 1;
 
 /*
  * Targeted sustainable load relatively to current frequency.
  * If 0, target is set realtively to the max speed
  */
-static unsigned long sustain_load;
+static unsigned long sustain_load = 46;
 
 /*
  * The minimum amount of time to spend at a frequency before we can ramp down.
@@ -120,16 +120,16 @@ static unsigned long high_freq_min_delay;
  * The maximum frequency CPUs are allowed to run normally
  * 0 if disabled
  */
-#define DEFAULT_MAX_NORMAL_FREQ 0
+#define DEFAULT_MAX_NORMAL_FREQ 1400000
 static unsigned long max_normal_freq;
 
 
 /* Defines to control mid-range frequencies */
-#define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 95
+#define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 70
 
-static unsigned long midrange_freq;
+static unsigned long midrange_freq = 620000;
 static unsigned long midrange_go_maxspeed_load;
-static unsigned long midrange_max_boost;
+static unsigned long midrange_max_boost = 175000;
 
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event);
