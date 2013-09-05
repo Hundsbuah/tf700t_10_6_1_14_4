@@ -30,11 +30,6 @@
 #include "tegra3_emc.h"
 #include <mach/board-cardhu-misc.h>
 #include <mach/hundsbuah.h>
-
-#ifdef CONFIG_VOLTAGE_CONTROL
-int user_mv_table[MAX_DVFS_FREQS] = { 0 };
-#endif
-
 static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;
 static struct dvfs *cpu_dvfs;
@@ -145,7 +140,7 @@ static struct dvfs_relationship tegra3_dvfs_relationships[] = {
 static struct dvfs core_dvfs_table[] = {
    /* soc_id2 == TF201 && TF700T */
 	/* Core voltages (mV):		  	      950,     1000,     1050,     1100,     1150,        1200,        1250,     1300,     1350,     1387,     1425 } */
-	CORE_DVFS("cpu_lp",     2, 1, KHZ, 204000,   295000,   370000,   428000,   475000,      513000,      579000,   620000,   620000,   620000,   620000),
+	CORE_DVFS("cpu_lp",     2, 1, KHZ, 204000,   370000,   475000,   475000,   475000,      513000,      579000,   620000,   620000,   620000,   620000),
 	CORE_DVFS("emc",        2, 1, KHZ, 102000,   450000,   450000,   450000,   450000,      667000,      667000,   800000,   900000,   900000,   900000),
 	CORE_DVFS("sbus",       2, 1, KHZ, 102000,   205000,   205000,   227000,   227000,      267000,      334000,   334000,   334000,   334000,   334000),
 	CORE_DVFS("vi",         2, 1, KHZ,      1,   219000,   267000,   300000,   371000,      409000,      425000,   425000,   425000,   425000,   425000),
@@ -501,7 +496,6 @@ void static inline hundsbuah_fill_arrays(int *parray, int array_size)
 	{
 		if(i >= MAX_DVFS_FREQS)
 			break;
-		user_mv_table[i] = parray[i];
 		cpu_millivolts[i] = parray[i];
 		cpu_millivolts_aged[i] = parray[i];
 		cpu_cold_offs_mhz[i] = 50;
