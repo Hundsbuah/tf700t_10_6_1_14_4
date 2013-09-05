@@ -39,16 +39,16 @@
 #include "clock.h"
 
 #define INITIAL_STATE		TEGRA_HP_DISABLED
-#define UP2G0_DELAY_MS		70
-#define UP2Gn_DELAY_MS		100
-#define DOWN_DELAY_MS		3000
+#define UP2G0_DELAY_MS		40
+#define UP2Gn_DELAY_MS		60
+#define DOWN_DELAY_MS		1200
 
 static struct mutex *tegra3_cpu_lock;
 
 static struct workqueue_struct *hotplug_wq;
 static struct delayed_work hotplug_work;
 
-static bool no_lp;
+static bool no_lp = 0;
 module_param(no_lp, bool, 0644);
 
 static unsigned long up2gn_delay;
@@ -67,16 +67,18 @@ static unsigned int idle_bottom_freq;
 module_param(idle_top_freq, uint, 0644);
 module_param(idle_bottom_freq, uint, 0644);
 
-static int mp_overhead = 10;
+static int mp_overhead = 20;
 module_param(mp_overhead, int, 0644);
 
 static int balance_level = 60;
+static int skewed_level = 40;
 module_param(balance_level, int, 0644);
 
 static struct clk *cpu_clk;
 static struct clk *cpu_g_clk;
 static struct clk *cpu_lp_clk;
 
+static struct kobject *rt_cfg_kobj;
 static unsigned long last_change_time;
 
 static struct {
@@ -194,7 +196,7 @@ enum {
 
 #define NR_FSHIFT	2
 
-static unsigned int rt_profile_sel;
+static unsigned int rt_profile_sel = 3;
 
 /* avg run threads * 4 (e.g., 9 = 2.25 threads) */
 
@@ -205,12 +207,17 @@ static unsigned int rt_profile_default[] = {
 
 static unsigned int rt_profile_1[] = {
 /*      1,  2,  3,  4 - on-line cpus target */
-	8,  9, 10, UINT_MAX
+	8,  11, 13, UINT_MAX
 };
 
 static unsigned int rt_profile_2[] = {
 /*      1,  2,  3,  4 - on-line cpus target */
 	5,  13, 14, UINT_MAX
+};
+
+static unsigned int rt_profile_user[] = {
+/*      1,  2,  3,  4 - on-line cpus target */
+	7,  10, 12, UINT_MAX
 };
 
 static unsigned int rt_profile_off[] = { /* disables runable thread */
@@ -221,6 +228,7 @@ static unsigned int *rt_profiles[] = {
 	rt_profile_default,
 	rt_profile_1,
 	rt_profile_2,
+	rt_profile_user,
 	rt_profile_off
 };
 
@@ -232,7 +240,7 @@ static noinline int tegra_cpu_speed_balance(void)
 {
 	unsigned long highest_speed = tegra_cpu_highest_speed();
 	unsigned long balanced_speed = highest_speed * balance_level / 100;
-	unsigned long skewed_speed = balanced_speed / 2;
+	unsigned long skewed_speed = highest_speed * skewed_level / 100;
 	unsigned int nr_cpus = num_online_cpus();
 	unsigned int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
 	unsigned int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
@@ -357,14 +365,14 @@ static void tegra_auto_hotplug_work_func(struct work_struct *work)
 	*/
 	if (system_state <= SYSTEM_RUNNING && cpu < nr_cpu_ids) {
 		if (up){
-			printk(KERN_INFO "cpu_up(%u)+\n",cpu);
+			//printk(KERN_INFO "cpu_up(%u)+\n",cpu);
 			cpu_up(cpu);
-			printk(KERN_INFO "cpu_up(%u)-\n",cpu);
+			//printk(KERN_INFO "cpu_up(%u)-\n",cpu);
 		}
 		else{
-			printk(KERN_INFO "cpu_down(%u)+\n",cpu);
+			//printk(KERN_INFO "cpu_down(%u)+\n",cpu);
 			cpu_down(cpu);
-			printk(KERN_INFO "cpu_down(%u)-\n",cpu);
+			//printk(KERN_INFO "cpu_down(%u)-\n",cpu);
 		}
 	}
 }
@@ -474,6 +482,53 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 	}
 }
 
+static ssize_t
+rt_cfg_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+   unsigned int idx;
+   int ret = 0;
+
+   for(idx = 0; idx < 3; idx++)
+   {
+	  ret += sprintf (&buf[ret], "%i ", rt_profile_user[idx]);
+   }
+
+   ret += sprintf(&buf[ret], "\n");
+
+   return ret;
+}
+
+static ssize_t
+rt_cfg_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int rt_cfg;
+	int ret;
+	char size_cur[16];
+	int idx;
+
+	for(idx = 0; idx < 3; idx++)
+	{
+		ret = sscanf(buf, "%i", &rt_cfg);
+		if (ret != 1)
+			return -EINVAL;
+		rt_profile_user[idx] = rt_cfg;
+		ret = sscanf(buf, "%s", size_cur);
+		buf += (strlen(size_cur)+1);
+	}
+
+    return count;
+}
+
+static struct kobj_attribute rt_cfg_attribute =
+	__ATTR(rt_config, 0644, rt_cfg_show, rt_cfg_store);
+
+const struct attribute *rt_cfg_attributes[] = {
+	&rt_cfg_attribute.attr,
+	NULL,
+};
+
 int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 {
 	/*
@@ -509,6 +564,15 @@ int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 		pr_err("%s: Failed to register min cpus PM QoS notifier\n",
 			__func__);
 
+	rt_cfg_kobj = kobject_create_and_add("rt_config", kernel_kobj);
+	if (!rt_cfg_kobj) {
+		pr_err("cpu_tegra3: failed to create sysfs rt_cfg_kobj object");
+		return 0;
+	}
+	if (sysfs_create_files(rt_cfg_kobj, rt_cfg_attributes)) {
+		pr_err("tegra3_dvfs: failed to create sysfs rt_cfg_kobj interface");
+		return 0;
+	}
 	return 0;
 }
 
