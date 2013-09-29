@@ -647,7 +647,7 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 				return -EINVAL;
 
 			/* TODO: need some robustness checks */
-			pr_info("gpu mv tbl[%i]: new: %lu old: %lu\n", i, volt_cur, cpu_clk_g->dvfs->millivolts[i]);
+			pr_info("cpu mv tbl[%i]: new: %lu old: %lu\n", i, volt_cur, cpu_clk_g->dvfs->millivolts[i]);
             cpu_clk_g->dvfs->millivolts[i] = volt_cur;
 
          /* Non-standard sysfs interface: advance buf */
