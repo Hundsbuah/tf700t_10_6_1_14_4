@@ -113,9 +113,7 @@ int eem_bind_config(struct usb_configuration *c);
 
 int rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 				u32 vendorID, const char *manufacturer);
-
 #else
-
 static inline int
 rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 				u32 vendorID, const char *manufacturer)
