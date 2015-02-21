@@ -309,4 +309,6 @@ config CRYPTO_DEV_TEGRA_SE
 	  This option allows you to have support of Security Engine for crypto
 	  acceleration.
 
+source "drivers/crypto/eds/Kconfig"
+
 endif # CRYPTO_HW

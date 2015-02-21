@@ -1,0 +1,5 @@
+config CRYPTO_EDS
+	tristate "Encrypted Data Store"
+   default m
+	help
+	  With EDS (Encrypted Data Store) you can store your files in the encrypted container to prevent unauthorized access to sensitive information. TrueCrypt(R), VeraCrypt(R), LUKS, CyberSafe(R) container files are supported. The program can operate in two modes: normal and mounted. 
